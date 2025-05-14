@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
+import styled from 'styled-components';
 
 export interface Comment {
   id: string;
@@ -25,6 +26,107 @@ interface CommentItemProps {
   depth?: number;
   maxDepth?: number;
 }
+
+// Styled Components
+const CommentContainer = styled.div<{ depth: number }>`
+  padding-top: 0.5rem;
+  ${props => props.depth > 0 && `
+    padding-left: 0.75rem;
+    border-left: 1px solid #e5e7eb;
+    
+    @media (min-width: 768px) {
+      padding-left: 1.25rem;
+    }
+  `}
+`;
+
+const CommentCard = styled.div`
+  background-color: white;
+  border-radius: 0.375rem;
+  padding: 0.75rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+`;
+
+const CommentHeader = styled.div`
+  display: flex;
+  align-items: center;
+  font-size: 0.75rem;
+  color: #6b7280;
+`;
+
+const AuthorName = styled.span`
+  font-weight: 500;
+  color: #374151;
+`;
+
+const Separator = styled.span`
+  margin: 0 0.25rem;
+`;
+
+const CommentContent = styled.div`
+  margin-top: 0.25rem;
+`;
+
+const CommentText = styled.p`
+  font-size: 0.875rem;
+`;
+
+const CommentActions = styled.div`
+  margin-top: 0.5rem;
+  display: flex;
+  align-items: center;
+  font-size: 0.75rem;
+  color: #6b7280;
+`;
+
+const VoteContainer = styled.div`
+  display: flex;
+  align-items: center;
+  margin-right: 0.75rem;
+`;
+
+const VoteButton = styled.button<{ active: boolean }>`
+  margin-right: 0.25rem;
+  color: ${props => props.active ? '#ea580c' : '#9ca3af'};
+  &:hover {
+    color: #f97316;
+  }
+`;
+
+const ActionButton = styled.button`
+  margin-right: 0.75rem;
+  &:hover {
+    color: #374151;
+  }
+`;
+
+const ReplyForm = styled.form`
+  margin-top: 0.75rem;
+`;
+
+const ReplyTextArea = styled.textarea`
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+`;
+
+const ReplySubmitButton = styled.button<{ disabled: boolean }>`
+  margin-top: 0.5rem;
+  padding: 0.25rem 0.75rem;
+  background-color: ${props => props.disabled ? '#fdba74' : '#ea580c'};
+  color: white;
+  font-size: 0.75rem;
+  border-radius: 0.25rem;
+  &:hover {
+    background-color: ${props => props.disabled ? '#fdba74' : '#c2410c'};
+  }
+`;
+
+const NestedReplies = styled.div`
+  margin-top: 0.5rem;
+`;
 
 export default function CommentItem({ 
   comment, 
@@ -61,74 +163,69 @@ export default function CommentItem({
   };
   
   return (
-    <div className={`pt-2 ${depth > 0 ? 'pl-3 md:pl-5 border-l border-gray-200' : ''}`}>
-      <div className="bg-white rounded-md p-3 shadow-sm">
+    <CommentContainer depth={depth}>
+      <CommentCard>
         {/* Comment header */}
-        <div className="flex items-center text-xs text-gray-500">
-          <span className="font-medium text-gray-700">{comment.author.username}</span>
-          <span className="mx-1">•</span>
+        <CommentHeader>
+          <AuthorName>{comment.author.username}</AuthorName>
+          <Separator>•</Separator>
           <span>{timeAgo}</span>
-        </div>
+        </CommentHeader>
         
         {/* Comment content */}
-        <div className="mt-1">
-          <p className="text-sm">{comment.textContent}</p>
-        </div>
+        <CommentContent>
+          <CommentText>{comment.textContent}</CommentText>
+        </CommentContent>
         
         {/* Comment actions */}
-        <div className="mt-2 flex items-center text-xs text-gray-500">
-          <div className="flex items-center mr-3">
+        <CommentActions>
+          <VoteContainer>
             {user && (
-              <button 
+              <VoteButton 
                 onClick={() => handleVote('UPVOTE')}
-                className={`mr-1 ${comment.voteType === 'UPVOTE' ? 'text-orange-600' : 'text-gray-400'} hover:text-orange-500`}
+                active={comment.voteType === 'UPVOTE'}
                 aria-label="Upvote"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
                   <path d="M12 4l-8 8h5v8h6v-8h5l-8-8z" />
                 </svg>
-              </button>
+              </VoteButton>
             )}
             <span>{comment.points} point{comment.points !== 1 && 's'}</span>
-          </div>
+          </VoteContainer>
           
           {user && onReply && (
-            <button 
-              onClick={() => setIsReplying(!isReplying)}
-              className="mr-3 hover:text-gray-700"
-            >
+            <ActionButton onClick={() => setIsReplying(!isReplying)}>
               {isReplying ? 'Cancel' : 'Reply'}
-            </button>
+            </ActionButton>
           )}
-        </div>
+        </CommentActions>
         
         {/* Reply form */}
         {isReplying && (
-          <form onSubmit={handleReply} className="mt-3">
-            <textarea
+          <ReplyForm onSubmit={handleReply}>
+            <ReplyTextArea
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded text-sm"
               rows={3}
               placeholder="Write your reply..."
               required
             />
-            <div className="mt-2">
-              <button
+            <div>
+              <ReplySubmitButton
                 type="submit"
                 disabled={isSubmittingReply || !replyText.trim()}
-                className="px-3 py-1 bg-orange-600 text-white text-xs rounded hover:bg-orange-700 disabled:bg-orange-300"
               >
                 {isSubmittingReply ? 'Submitting...' : 'Submit'}
-              </button>
+              </ReplySubmitButton>
             </div>
-          </form>
+          </ReplyForm>
         )}
-      </div>
+      </CommentCard>
       
       {/* Nested replies */}
       {comment.replies && comment.replies.length > 0 && depth < maxDepth && (
-        <div className="mt-2">
+        <NestedReplies>
           {comment.replies.map((reply) => (
             <CommentItem
               key={reply.id}
@@ -139,8 +236,8 @@ export default function CommentItem({
               maxDepth={maxDepth}
             />
           ))}
-        </div>
+        </NestedReplies>
       )}
-    </div>
+    </CommentContainer>
   );
 } 

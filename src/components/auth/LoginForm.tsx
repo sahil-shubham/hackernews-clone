@@ -3,6 +3,15 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
+import { 
+  FormCard, 
+  Heading, 
+  FormGroup, 
+  Label, 
+  Input, 
+  Button, 
+  ErrorText 
+} from '@/styles/StyledComponents';
 
 const LoginForm: React.FC = () => {
   const [emailOrUsername, setEmailOrUsername] = useState('');
@@ -41,48 +50,46 @@ const LoginForm: React.FC = () => {
   };
 
   return (
-    <div className="max-w-md mx-auto p-8 bg-white rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold mb-6">Login</h2>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <div className="flex flex-col">
-          <label htmlFor="emailOrUsername" className="mb-2 font-medium">
+    <FormCard>
+      <Heading level={2}>Login</Heading>
+      <form onSubmit={handleSubmit}>
+        <FormGroup>
+          <Label htmlFor="emailOrUsername">
             Email or Username
-          </label>
-          <input
+          </Label>
+          <Input
             id="emailOrUsername"
             type="text"
             value={emailOrUsername}
             onChange={(e) => setEmailOrUsername(e.target.value)}
             required
-            className="p-2 border border-gray-300 rounded"
           />
-        </div>
+        </FormGroup>
         
-        <div className="flex flex-col">
-          <label htmlFor="password" className="mb-2 font-medium">
+        <FormGroup>
+          <Label htmlFor="password">
             Password
-          </label>
-          <input
+          </Label>
+          <Input
             id="password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="p-2 border border-gray-300 rounded"
           />
-        </div>
+        </FormGroup>
         
-        <button 
+        <Button 
           type="submit" 
           disabled={isSubmitting}
-          className="mt-2 py-2 px-4 bg-orange-600 text-white rounded font-medium hover:bg-orange-700 disabled:bg-gray-400"
+          fullWidth
         >
           {isSubmitting ? 'Logging in...' : 'Login'}
-        </button>
+        </Button>
         
-        {error && <div className="text-red-600 mt-4">{error}</div>}
+        {error && <ErrorText>{error}</ErrorText>}
       </form>
-    </div>
+    </FormCard>
   );
 };
 

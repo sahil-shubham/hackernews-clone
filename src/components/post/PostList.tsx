@@ -3,6 +3,7 @@
 import React from 'react';
 import PostItem, { Post } from './PostItem';
 import { useAuth } from '@/hooks/useAuth';
+import styled from 'styled-components';
 
 interface PostListProps {
   posts: Post[];
@@ -10,42 +11,103 @@ interface PostListProps {
   onVote?: (postId: string, voteType: 'UPVOTE' | 'DOWNVOTE') => Promise<void>;
 }
 
+// Styled Components
+const Container = styled.div`
+  padding: 1.5rem 0;
+`;
+
+const PostListContainer = styled.div`
+  max-width: 48rem;
+  margin: 0 auto;
+`;
+
+const EmptyStateContainer = styled.div`
+  max-width: 48rem;
+  margin: 0 auto;
+  text-align: center;
+  padding: 2.5rem 0;
+`;
+
+const EmptyStateHeading = styled.h3`
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: #6b7280;
+`;
+
+const EmptyStateText = styled.p`
+  margin-top: 0.5rem;
+  color: #9ca3af;
+`;
+
+const LoadingItem = styled.div`
+  background-color: white;
+  border-radius: 0.375rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+`;
+
+const LoadingTitle = styled.div`
+  height: 1.25rem;
+  background-color: #e5e7eb;
+  border-radius: 0.25rem;
+  width: 75%;
+  margin-bottom: 0.5rem;
+`;
+
+const LoadingSubtitle = styled.div`
+  height: 0.75rem;
+  background-color: #f3f4f6;
+  border-radius: 0.25rem;
+  width: 50%;
+`;
+
 export default function PostList({ posts, loading = false, onVote }: PostListProps) {
   const { user } = useAuth();
 
   if (loading) {
     return (
-      <div className="py-6">
-        <div className="max-w-3xl mx-auto">
+      <Container>
+        <PostListContainer>
           {[...Array(10)].map((_, index) => (
-            <div key={index} className="bg-white rounded-md shadow-sm p-3 mb-3 animate-pulse">
-              <div className="h-5 bg-gray-200 rounded w-3/4 mb-2"></div>
-              <div className="h-3 bg-gray-100 rounded w-1/2"></div>
-            </div>
+            <LoadingItem key={index}>
+              <LoadingTitle />
+              <LoadingSubtitle />
+            </LoadingItem>
           ))}
-        </div>
-      </div>
+        </PostListContainer>
+      </Container>
     );
   }
 
   if (posts.length === 0) {
     return (
-      <div className="py-6">
-        <div className="max-w-3xl mx-auto text-center py-10">
-          <h3 className="text-lg font-medium text-gray-500">No posts found</h3>
+      <Container>
+        <EmptyStateContainer>
+          <EmptyStateHeading>No posts found</EmptyStateHeading>
           {user && (
-            <p className="mt-2 text-gray-400">
+            <EmptyStateText>
               Be the first to submit a post!
-            </p>
+            </EmptyStateText>
           )}
-        </div>
-      </div>
+        </EmptyStateContainer>
+      </Container>
     );
   }
 
   return (
-    <div className="py-4">
-      <div className="max-w-3xl mx-auto">
+    <Container>
+      <PostListContainer>
         {posts.map((post, index) => (
           <PostItem 
             key={post.id} 
@@ -54,7 +116,7 @@ export default function PostList({ posts, loading = false, onVote }: PostListPro
             onVote={onVote}
           />
         ))}
-      </div>
-    </div>
+      </PostListContainer>
+    </Container>
   );
 } 

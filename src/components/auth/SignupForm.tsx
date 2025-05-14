@@ -3,6 +3,15 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
+import { 
+  FormCard, 
+  Heading, 
+  FormGroup, 
+  Label, 
+  Input, 
+  Button, 
+  ErrorText 
+} from '@/styles/StyledComponents';
 
 const SignupForm: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -53,76 +62,72 @@ const SignupForm: React.FC = () => {
   };
 
   return (
-    <div className="max-w-md mx-auto p-8 bg-white rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold mb-6">Sign Up</h2>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <div className="flex flex-col">
-          <label htmlFor="email" className="mb-2 font-medium">
+    <FormCard>
+      <Heading level={2}>Sign Up</Heading>
+      <form onSubmit={handleSubmit}>
+        <FormGroup>
+          <Label htmlFor="email">
             Email
-          </label>
-          <input
+          </Label>
+          <Input
             id="email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="p-2 border border-gray-300 rounded"
           />
-        </div>
+        </FormGroup>
         
-        <div className="flex flex-col">
-          <label htmlFor="username" className="mb-2 font-medium">
+        <FormGroup>
+          <Label htmlFor="username">
             Username
-          </label>
-          <input
+          </Label>
+          <Input
             id="username"
             type="text"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             required
-            className="p-2 border border-gray-300 rounded"
           />
-        </div>
+        </FormGroup>
         
-        <div className="flex flex-col">
-          <label htmlFor="password" className="mb-2 font-medium">
+        <FormGroup>
+          <Label htmlFor="password">
             Password
-          </label>
-          <input
+          </Label>
+          <Input
             id="password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="p-2 border border-gray-300 rounded"
           />
-        </div>
+        </FormGroup>
         
-        <div className="flex flex-col">
-          <label htmlFor="confirmPassword" className="mb-2 font-medium">
+        <FormGroup>
+          <Label htmlFor="confirmPassword">
             Confirm Password
-          </label>
-          <input
+          </Label>
+          <Input
             id="confirmPassword"
             type="password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
-            className="p-2 border border-gray-300 rounded"
           />
-        </div>
+        </FormGroup>
         
-        <button 
+        <Button 
           type="submit" 
           disabled={isSubmitting}
-          className="mt-2 py-2 px-4 bg-orange-600 text-white rounded font-medium hover:bg-orange-700 disabled:bg-gray-400"
+          fullWidth
         >
           {isSubmitting ? 'Signing up...' : 'Sign Up'}
-        </button>
+        </Button>
         
-        {error && <div className="text-red-600 mt-4">{error}</div>}
+        {error && <ErrorText>{error}</ErrorText>}
       </form>
-    </div>
+    </FormCard>
   );
 };
 

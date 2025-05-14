@@ -3,12 +3,76 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
+import styled from 'styled-components';
 
 interface CommentFormProps {
   postId: string;
   onAddComment: (text: string) => Promise<void>;
   placeholder?: string;
 }
+
+// Styled Components
+const FormContainer = styled.div`
+  background-color: white;
+  border-radius: 0.375rem;
+  padding: 1rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  margin-bottom: 1.5rem;
+`;
+
+const TextArea = styled.textarea`
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.25rem;
+`;
+
+const FormGroup = styled.div`
+  margin-bottom: 0.75rem;
+`;
+
+const ErrorMessage = styled.p`
+  color: #ef4444;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+`;
+
+const ButtonContainer = styled.div`
+  display: flex;
+  justify-content: flex-end;
+`;
+
+const SubmitButton = styled.button<{ disabled: boolean }>`
+  padding: 0.5rem 1rem;
+  background-color: ${props => props.disabled ? '#fdba74' : '#ea580c'};
+  color: white;
+  border-radius: 0.25rem;
+  font-weight: 500;
+  &:hover {
+    background-color: ${props => props.disabled ? '#fdba74' : '#c2410c'};
+  }
+`;
+
+const LoginMessage = styled.div`
+  text-align: center;
+  padding: 1rem 0;
+`;
+
+const LoginText = styled.p`
+  color: #4b5563;
+  margin-bottom: 0.5rem;
+`;
+
+const LoginButton = styled.button`
+  padding: 0.5rem 1rem;
+  background-color: #ea580c;
+  color: white;
+  border-radius: 0.25rem;
+  font-weight: 500;
+  &:hover {
+    background-color: #c2410c;
+  }
+`;
 
 export default function CommentForm({ 
   postId, 
@@ -53,41 +117,38 @@ export default function CommentForm({
   };
   
   return (
-    <div className="bg-white rounded-md p-4 shadow-sm mb-6">
+    <FormContainer>
       {user ? (
         <form onSubmit={handleSubmit}>
-          <div className="mb-3">
-            <textarea
+          <FormGroup>
+            <TextArea
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded"
               rows={4}
               placeholder={placeholder}
               required
             />
-            {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
-          </div>
-          <div className="flex justify-end">
-            <button
+            {error && <ErrorMessage>{error}</ErrorMessage>}
+          </FormGroup>
+          <ButtonContainer>
+            <SubmitButton
               type="submit"
               disabled={isSubmitting || !comment.trim()}
-              className="px-4 py-2 bg-orange-600 text-white rounded font-medium hover:bg-orange-700 disabled:bg-orange-300"
             >
               {isSubmitting ? 'Posting...' : 'Post Comment'}
-            </button>
-          </div>
+            </SubmitButton>
+          </ButtonContainer>
         </form>
       ) : (
-        <div className="text-center py-4">
-          <p className="text-gray-600 mb-2">You need to be logged in to comment</p>
-          <button
+        <LoginMessage>
+          <LoginText>You need to be logged in to comment</LoginText>
+          <LoginButton
             onClick={() => router.push(`/login?next=/post/${postId}`)}
-            className="px-4 py-2 bg-orange-600 text-white rounded font-medium hover:bg-orange-700"
           >
             Login to Comment
-          </button>
-        </div>
+          </LoginButton>
+        </LoginMessage>
       )}
-    </div>
+    </FormContainer>
   );
 } 

@@ -5,6 +5,59 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import PostList from '@/components/post/PostList';
 import { Post } from '@/components/post/PostItem';
 import { useAuth } from '@/hooks/useAuth';
+import styled from 'styled-components';
+import { PageContainer, Button, FlexContainer, ErrorText } from '@/styles/StyledComponents';
+
+// Styled components for this page
+const SortingTabs = styled.div`
+  display: flex;
+  border-bottom: 1px solid ${props => props.theme.colors.secondaryLight};
+  margin-bottom: ${props => props.theme.space.lg};
+`;
+
+const SortTab = styled.button<{ active: boolean }>`
+  padding: ${props => `${props.theme.space.md} ${props.theme.space.lg}`};
+  font-weight: ${props => props.theme.fontWeights.medium};
+  color: ${props => props.active ? props.theme.colors.primary : props.theme.colors.secondary};
+  border-bottom: ${props => props.active ? `2px solid ${props.theme.colors.primary}` : 'none'};
+  
+  &:hover {
+    color: ${props => props.active ? props.theme.colors.primary : props.theme.colors.secondaryDark};
+  }
+`;
+
+const ErrorAlert = styled.div`
+  background-color: #fee2e2;
+  border: 1px solid ${props => props.theme.colors.error};
+  color: ${props => props.theme.colors.error};
+  padding: ${props => props.theme.space.md};
+  border-radius: ${props => props.theme.radii.md};
+  margin-bottom: ${props => props.theme.space.lg};
+`;
+
+const PaginationContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  padding: ${props => props.theme.space.lg} 0;
+`;
+
+const PageButtons = styled.div`
+  display: flex;
+  gap: ${props => props.theme.space.sm};
+`;
+
+const PageButton = styled.button<{ active?: boolean }>`
+  padding: ${props => `${props.theme.space.xs} ${props.theme.space.md}`};
+  border: 1px solid ${props => props.theme.colors.secondaryLight};
+  border-radius: ${props => props.theme.radii.sm};
+  font-size: ${props => props.theme.fontSizes.sm};
+  background-color: ${props => props.active ? props.theme.colors.primary : props.theme.colors.white};
+  color: ${props => props.active ? props.theme.colors.white : 'inherit'};
+  
+  &:hover {
+    background-color: ${props => props.active ? props.theme.colors.primary : '#f9fafb'};
+  }
+`;
 
 export default function Home() {
   const searchParams = useSearchParams();
@@ -117,50 +170,43 @@ export default function Home() {
   };
 
   return (
-    <div className="container mx-auto px-4">
+    <PageContainer>
       {/* Sorting tabs */}
-      <div className="flex border-b mb-4">
-        <button
-          className={`px-4 py-2 font-medium ${sort === 'new' ? 'text-orange-600 border-b-2 border-orange-600' : 'text-gray-500 hover:text-gray-700'}`}
+      <SortingTabs>
+        <SortTab
+          active={sort === 'new'}
           onClick={() => handleSortChange('new')}
         >
           New
-        </button>
-        <button
-          className={`px-4 py-2 font-medium ${sort === 'top' ? 'text-orange-600 border-b-2 border-orange-600' : 'text-gray-500 hover:text-gray-700'}`}
+        </SortTab>
+        <SortTab
+          active={sort === 'top'}
           onClick={() => handleSortChange('top')}
         >
           Top
-        </button>
-        <button
-          className={`px-4 py-2 font-medium ${sort === 'best' ? 'text-orange-600 border-b-2 border-orange-600' : 'text-gray-500 hover:text-gray-700'}`}
+        </SortTab>
+        <SortTab
+          active={sort === 'best'}
           onClick={() => handleSortChange('best')}
         >
           Best
-        </button>
-      </div>
+        </SortTab>
+      </SortingTabs>
       
       {/* Error message */}
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
-        </div>
-      )}
+      {error && <ErrorAlert>{error}</ErrorAlert>}
       
       {/* Post list */}
       <PostList posts={posts} loading={loading} onVote={handleVote} />
       
       {/* Pagination */}
       {!loading && pagination.totalPages > 1 && (
-        <div className="flex justify-center py-4">
-          <div className="flex space-x-2">
+        <PaginationContainer>
+          <PageButtons>
             {page > 1 && (
-              <button
-                onClick={() => goToPage(page - 1)}
-                className="px-3 py-1 bg-white border rounded text-sm hover:bg-gray-50"
-              >
+              <PageButton onClick={() => goToPage(page - 1)}>
                 Previous
-              </button>
+              </PageButton>
             )}
             
             {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
@@ -177,31 +223,24 @@ export default function Home() {
               }
               
               return (
-                <button
+                <PageButton
                   key={i}
+                  active={pageNum === page}
                   onClick={() => goToPage(pageNum)}
-                  className={`px-3 py-1 border rounded text-sm ${
-                    pageNum === page
-                      ? 'bg-orange-600 text-white'
-                      : 'bg-white hover:bg-gray-50'
-                  }`}
                 >
                   {pageNum}
-                </button>
+                </PageButton>
               );
             })}
             
             {page < pagination.totalPages && (
-              <button
-                onClick={() => goToPage(page + 1)}
-                className="px-3 py-1 bg-white border rounded text-sm hover:bg-gray-50"
-              >
+              <PageButton onClick={() => goToPage(page + 1)}>
                 Next
-              </button>
+              </PageButton>
             )}
-          </div>
-        </div>
+          </PageButtons>
+        </PaginationContainer>
       )}
-    </div>
+    </PageContainer>
   );
 }

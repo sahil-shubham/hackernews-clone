@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
+import styled from 'styled-components';
 
 // Types
 export interface Post {
@@ -29,6 +30,79 @@ interface PostItemProps {
   onVote?: (postId: string, voteType: 'UPVOTE' | 'DOWNVOTE') => Promise<void>;
 }
 
+// Styled Components
+const PostContainer = styled.div`
+  background-color: white;
+  border-radius: 0.375rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.875rem;
+`;
+
+const PostContent = styled.div`
+  display: flex;
+  align-items: flex-start;
+`;
+
+const RankNumber = styled.span`
+  color: #6b7280;
+  margin-right: 0.5rem;
+  width: 1.25rem;
+  text-align: right;
+`;
+
+const VoteContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-right: 0.5rem;
+  margin-top: 0.25rem;
+`;
+
+const VoteButton = styled.button<{ active: boolean }>`
+  color: ${props => props.active ? '#ea580c' : '#9ca3af'};
+  &:hover {
+    color: #f97316;
+  }
+`;
+
+const PostDetails = styled.div`
+  flex: 1;
+`;
+
+const PostTitle = styled.div`
+  font-weight: 500;
+`;
+
+const TitleLink = styled.a`
+  &:hover {
+    text-decoration: underline;
+  }
+`;
+
+const StyledLink = styled(Link)`
+  &:hover {
+    text-decoration: underline;
+  }
+`;
+
+const Domain = styled.span`
+  color: #6b7280;
+  margin-left: 0.25rem;
+  font-size: 0.75rem;
+`;
+
+const MetadataContainer = styled.div`
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-top: 0.25rem;
+`;
+
+const MetadataSeparator = styled.span`
+  margin: 0 0.25rem;
+`;
+
 export default function PostItem({ post, rank, onVote }: PostItemProps) {
   const { user } = useAuth();
   
@@ -46,67 +120,66 @@ export default function PostItem({ post, rank, onVote }: PostItemProps) {
   };
 
   return (
-    <div className="bg-white rounded-md shadow-sm p-3 mb-3 text-sm">
-      <div className="flex items-start">
+    <PostContainer>
+      <PostContent>
         {/* Rank number if provided */}
         {rank && (
-          <span className="text-gray-500 mr-2 w-5 text-right">{rank}.</span>
+          <RankNumber>{rank}.</RankNumber>
         )}
         
         {/* Vote arrow - only show if user is logged in */}
         {user && (
-          <div className="flex flex-col items-center mr-2 mt-1">
-            <button 
+          <VoteContainer>
+            <VoteButton 
               onClick={() => handleVote('UPVOTE')}
-              className={`${post.voteType === 'UPVOTE' ? 'text-orange-600' : 'text-gray-400'} hover:text-orange-500`}
+              active={post.voteType === 'UPVOTE'}
               aria-label="Upvote"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
                 <path d="M12 3.75l7.5 7.5h-4.5v9h-6v-9H4.5l7.5-7.5z" />
               </svg>
-            </button>
-          </div>
+            </VoteButton>
+          </VoteContainer>
         )}
         
-        <div className="flex-1">
+        <PostDetails>
           {/* Title and URL */}
-          <div className="font-medium">
+          <PostTitle>
             {post.url ? (
-              <a 
+              <TitleLink 
                 href={post.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="hover:underline"
               >
                 {post.title}
-              </a>
+              </TitleLink>
             ) : (
-              <Link href={`/post/${post.id}`} className="hover:underline">
+              <StyledLink href={`/post/${post.id}`}>
                 {post.title}
-              </Link>
+              </StyledLink>
             )}
             
             {domain && (
-              <span className="text-gray-500 ml-1 text-xs">
+              <Domain>
                 ({domain})
-              </span>
+              </Domain>
             )}
-          </div>
+          </PostTitle>
           
           {/* Post metadata */}
-          <div className="text-xs text-gray-500 mt-1">
+          <MetadataContainer>
             <span>{post.points} points</span>
-            <span className="mx-1">•</span>
+            <MetadataSeparator>•</MetadataSeparator>
             <span>by {post.author.username}</span>
-            <span className="mx-1">•</span>
+            <MetadataSeparator>•</MetadataSeparator>
             <span>{timeAgo}</span>
-            <span className="mx-1">•</span>
-            <Link href={`/post/${post.id}`} className="hover:underline">
+            <MetadataSeparator>•</MetadataSeparator>
+            <StyledLink href={`/post/${post.id}`}>
               {post.commentCount} {post.commentCount === 1 ? 'comment' : 'comments'}
-            </Link>
-          </div>
-        </div>
-      </div>
-    </div>
+            </StyledLink>
+          </MetadataContainer>
+        </PostDetails>
+      </PostContent>
+    </PostContainer>
   );
 } 
