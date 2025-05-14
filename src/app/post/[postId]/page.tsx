@@ -4,9 +4,131 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
-import Link from 'next/link';
+import styled from 'styled-components';
 import CommentForm from '@/components/comment/CommentForm';
-import { Comment } from '@/components/comment/CommentItem';
+import CommentItem, { Comment } from '@/components/comment/CommentItem';
+import { 
+  PageContainer, 
+  Card, 
+  Heading, 
+  Text, 
+  StyledLink,
+  ErrorText
+} from '@/styles/StyledComponents';
+
+// Styled components for post detail page
+const PostCard = styled(Card)`
+  padding: ${props => props.theme.space.lg};
+`;
+
+const PostTitle = styled(Heading)`
+  margin-bottom: ${props => props.theme.space.sm};
+`;
+
+const PostUrl = styled.a`
+  display: block;
+  color: ${props => props.theme.colors.secondary};
+  font-size: ${props => props.theme.fontSizes.sm};
+  margin-bottom: ${props => props.theme.space.lg};
+  
+  &:hover {
+    text-decoration: underline;
+  }
+`;
+
+const PostContent = styled.div`
+  margin: ${props => props.theme.space.lg} 0;
+  color: ${props => props.theme.colors.secondaryDark};
+`;
+
+const PreformattedText = styled.p`
+  white-space: pre-line;
+`;
+
+const PostMeta = styled.div`
+  font-size: ${props => props.theme.fontSizes.sm};
+  color: ${props => props.theme.colors.secondary};
+  margin-top: ${props => props.theme.space.lg};
+  display: flex;
+  flex-wrap: wrap;
+  gap: ${props => props.theme.space.xs};
+`;
+
+const MetaSeparator = styled.span`
+  margin: 0 ${props => props.theme.space.xs};
+`;
+
+const CommentsSection = styled.div`
+  padding: ${props => props.theme.space.lg} 0;
+`;
+
+const CommentsSectionHeader = styled.div`
+  margin-bottom: ${props => props.theme.space.lg};
+`;
+
+const CommentsHeading = styled.h3`
+  font-size: ${props => props.theme.fontSizes.lg};
+  font-weight: ${props => props.theme.fontWeights.medium};
+`;
+
+const CommentsContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${props => props.theme.space.md};
+`;
+
+const NoCommentsMessage = styled.div`
+  background-color: ${props => props.theme.colors.white};
+  border-radius: ${props => props.theme.radii.md};
+  padding: ${props => props.theme.space.xl};
+  text-align: center;
+  color: ${props => props.theme.colors.secondary};
+`;
+
+const ErrorContainer = styled.div`
+  background-color: #fee2e2;
+  border: 1px solid ${props => props.theme.colors.error};
+  color: ${props => props.theme.colors.error};
+  padding: ${props => props.theme.space.md};
+  border-radius: ${props => props.theme.radii.md};
+  margin-bottom: ${props => props.theme.space.lg};
+`;
+
+const LoadingContainer = styled(PostCard)`
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+`;
+
+const LoadingTitle = styled.div`
+  height: 1.5rem;
+  background-color: #e5e7eb;
+  border-radius: ${props => props.theme.radii.sm};
+  width: 75%;
+  margin-bottom: ${props => props.theme.space.lg};
+`;
+
+const LoadingSubtitle = styled.div`
+  height: 1rem;
+  background-color: #f3f4f6;
+  border-radius: ${props => props.theme.radii.sm};
+  width: 50%;
+  margin-bottom: ${props => props.theme.space.xl};
+`;
+
+const LoadingContent = styled.div`
+  height: 6rem;
+  background-color: #f3f4f6;
+  border-radius: ${props => props.theme.radii.sm};
+  margin-bottom: ${props => props.theme.space.lg};
+`;
 
 export default function PostDetailPage() {
   const { postId } = useParams();
@@ -203,27 +325,27 @@ export default function PostDetailPage() {
   // Loading state
   if (loading) {
     return (
-      <div className="max-w-3xl mx-auto p-4">
-        <div className="bg-white rounded-md p-4 shadow-sm mb-6 animate-pulse">
-          <div className="h-6 bg-gray-200 rounded w-3/4 mb-4"></div>
-          <div className="h-4 bg-gray-100 rounded w-1/2 mb-6"></div>
-          <div className="h-24 bg-gray-100 rounded mb-4"></div>
-        </div>
-      </div>
+      <PageContainer>
+        <LoadingContainer>
+          <LoadingTitle />
+          <LoadingSubtitle />
+          <LoadingContent />
+        </LoadingContainer>
+      </PageContainer>
     );
   }
   
   // Error state
   if (error || !post) {
     return (
-      <div className="max-w-3xl mx-auto p-4">
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+      <PageContainer>
+        <ErrorContainer>
           {error || 'Post not found'}
-        </div>
-        <Link href="/" className="text-orange-600 hover:underline">
+        </ErrorContainer>
+        <StyledLink href="/">
           Back to home
-        </Link>
-      </div>
+        </StyledLink>
+      </PageContainer>
     );
   }
   
@@ -234,112 +356,64 @@ export default function PostDetailPage() {
   const timeAgo = formatDistanceToNow(new Date(post.createdAt), { addSuffix: true });
   
   return (
-    <div className="max-w-3xl mx-auto p-4">
+    <PageContainer>
       {/* Post details */}
-      <div className="bg-white rounded-md p-4 shadow-sm mb-6">
-        <h1 className="text-xl font-bold mb-2">{post.title}</h1>
+      <PostCard>
+        <PostTitle level={1}>{post.title}</PostTitle>
         
         {post.url && (
-          <a 
+          <PostUrl 
             href={post.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-gray-500 text-sm hover:underline mb-4 block"
           >
             {domain && `(${domain})`}
-          </a>
+          </PostUrl>
         )}
         
         {post.textContent && (
-          <div className="my-4 text-gray-800">
-            <p className="whitespace-pre-line">{post.textContent}</p>
-          </div>
+          <PostContent>
+            <PreformattedText>{post.textContent}</PreformattedText>
+          </PostContent>
         )}
         
-        <div className="text-sm text-gray-500 mt-4">
+        <PostMeta>
           <span>{post.points} points</span>
-          <span className="mx-1">•</span>
+          <MetaSeparator>•</MetaSeparator>
           <span>by {post.author.username}</span>
-          <span className="mx-1">•</span>
+          <MetaSeparator>•</MetaSeparator>
           <span>{timeAgo}</span>
-          <span className="mx-1">•</span>
+          <MetaSeparator>•</MetaSeparator>
           <span>{post.commentCount} comments</span>
-        </div>
-      </div>
+        </PostMeta>
+      </PostCard>
       
       {/* Comment form */}
       <CommentForm postId={postId as string} onAddComment={handleAddComment} />
       
       {/* Display comments */}
-      {comments.length === 0 ? (
-        <div className="py-4">
-          <div className="mb-4">
-            <h3 className="text-lg font-medium">Comments</h3>
-          </div>
-          <div className="bg-white rounded-md p-6 text-center text-gray-500">
+      <CommentsSection>
+        <CommentsSectionHeader>
+          <CommentsHeading>Comments {comments.length > 0 && `(${comments.length})`}</CommentsHeading>
+        </CommentsSectionHeader>
+        
+        {comments.length === 0 ? (
+          <NoCommentsMessage>
             No comments yet. Be the first to comment!
-          </div>
-        </div>
-      ) : (
-        <div className="py-4">
-          <div className="mb-4">
-            <h3 className="text-lg font-medium">Comments ({comments.length})</h3>
-          </div>
-          <div className="space-y-3">
+          </NoCommentsMessage>
+        ) : (
+          <CommentsContainer>
             {comments.map((comment) => (
-              <div key={comment.id} className="pt-2">
-                <div className="bg-white rounded-md p-3 shadow-sm">
-                  {/* Comment header */}
-                  <div className="flex items-center text-xs text-gray-500">
-                    <span className="font-medium text-gray-700">{comment.author.username}</span>
-                    <span className="mx-1">•</span>
-                    <span>{formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}</span>
-                  </div>
-                  
-                  {/* Comment content */}
-                  <div className="mt-1">
-                    <p className="text-sm">{comment.textContent}</p>
-                  </div>
-                  
-                  {/* Comment actions */}
-                  <div className="mt-2 flex items-center text-xs text-gray-500">
-                    <div className="flex items-center mr-3">
-                      {user && (
-                        <button 
-                          onClick={() => handleCommentVote(comment.id, 'UPVOTE')}
-                          className={`mr-1 ${comment.voteType === 'UPVOTE' ? 'text-orange-600' : 'text-gray-400'} hover:text-orange-500`}
-                          aria-label="Upvote"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-                            <path d="M12 4l-8 8h5v8h6v-8h5l-8-8z" />
-                          </svg>
-                        </button>
-                      )}
-                      <span>{comment.points} point{comment.points !== 1 && 's'}</span>
-                    </div>
-                    
-                    {user && (
-                      <button 
-                        onClick={() => {/* Toggle reply form */}}
-                        className="mr-3 hover:text-gray-700"
-                      >
-                        Reply
-                      </button>
-                    )}
-                  </div>
-                </div>
-                
-                {/* Nested replies would go here */}
-                {comment.replies && comment.replies.length > 0 && (
-                  <div className="mt-2 pl-4 border-l border-gray-200">
-                    {/* We'd render nested comments here with similar markup */}
-                  </div>
-                )}
-              </div>
+              <CommentItem
+                key={comment.id}
+                comment={comment}
+                onVote={handleCommentVote}
+                onReply={handleCommentReply}
+              />
             ))}
-          </div>
-        </div>
-      )}
-    </div>
+          </CommentsContainer>
+        )}
+      </CommentsSection>
+    </PageContainer>
   );
 } 

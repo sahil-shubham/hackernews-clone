@@ -3,6 +3,82 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import styled from 'styled-components';
+import { 
+  PageContainer, 
+  Card, 
+  Heading, 
+  FormGroup, 
+  Label, 
+  Input, 
+  TextArea, 
+  Button,
+  ErrorText,
+  FlexContainer
+} from '@/styles/StyledComponents';
+
+// Type selector styled components
+const TypeSelectorContainer = styled.div`
+  margin-bottom: ${props => props.theme.space.lg};
+`;
+
+const TypeSelectorGroup = styled.div`
+  display: inline-flex;
+  border-radius: ${props => props.theme.radii.md};
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+`;
+
+const TypeButton = styled.button<{ active: boolean }>`
+  padding: ${props => `${props.theme.space.sm} ${props.theme.space.lg}`};
+  font-size: ${props => props.theme.fontSizes.sm};
+  font-weight: ${props => props.theme.fontWeights.medium};
+  border: 1px solid ${props => 
+    props.active 
+      ? props.theme.colors.primary 
+      : props.theme.colors.secondaryLight
+  };
+  background-color: ${props => 
+    props.active 
+      ? props.theme.colors.primary 
+      : props.theme.colors.white
+  };
+  color: ${props => 
+    props.active 
+      ? props.theme.colors.white 
+      : props.theme.colors.secondaryDark
+  };
+  
+  &:hover:not(:disabled) {
+    background-color: ${props => 
+      props.active 
+        ? props.theme.colors.primary 
+        : '#f9fafb'
+    };
+  }
+  
+  &:first-child {
+    border-top-left-radius: ${props => props.theme.radii.md};
+    border-bottom-left-radius: ${props => props.theme.radii.md};
+  }
+  
+  &:last-child {
+    border-top-right-radius: ${props => props.theme.radii.md};
+    border-bottom-right-radius: ${props => props.theme.radii.md};
+  }
+`;
+
+const RequiredMark = styled.span`
+  color: ${props => props.theme.colors.error};
+`;
+
+const ErrorAlert = styled.div`
+  background-color: #fee2e2;
+  border: 1px solid ${props => props.theme.colors.error};
+  color: ${props => props.theme.colors.error};
+  padding: ${props => props.theme.space.md};
+  border-radius: ${props => props.theme.radii.md};
+  margin-bottom: ${props => props.theme.space.lg};
+`;
 
 export default function SubmitPage() {
   const router = useRouter();
@@ -77,95 +153,81 @@ export default function SubmitPage() {
   };
   
   return (
-    <div className="max-w-2xl mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-6">Submit</h1>
+    <PageContainer>
+      <Heading level={1}>Submit</Heading>
       
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
-        </div>
-      )}
+      {error && <ErrorAlert>{error}</ErrorAlert>}
       
-      <div className="mb-4">
-        <div className="inline-flex rounded-md shadow-sm" role="group">
-          <button
+      <TypeSelectorContainer>
+        <TypeSelectorGroup role="group">
+          <TypeButton
             type="button"
-            className={`px-4 py-2 text-sm font-medium border rounded-l-lg ${
-              type === 'LINK'
-                ? 'bg-orange-600 text-white border-orange-600'
-                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-            }`}
+            active={type === 'LINK'}
             onClick={() => setType('LINK')}
           >
             Link
-          </button>
-          <button
+          </TypeButton>
+          <TypeButton
             type="button"
-            className={`px-4 py-2 text-sm font-medium border-t border-b border-r rounded-r-lg ${
-              type === 'TEXT'
-                ? 'bg-orange-600 text-white border-orange-600'
-                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-            }`}
+            active={type === 'TEXT'}
             onClick={() => setType('TEXT')}
           >
             Text
-          </button>
-        </div>
-      </div>
+          </TypeButton>
+        </TypeSelectorGroup>
+      </TypeSelectorContainer>
       
-      <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-sm">
-        <div className="mb-4">
-          <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
-            Title <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            id="title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="w-full p-2 border border-gray-300 rounded"
-            required
-          />
-        </div>
-        
-        {type === 'LINK' ? (
-          <div className="mb-4">
-            <label htmlFor="url" className="block text-sm font-medium text-gray-700 mb-1">
-              URL <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="url"
-              id="url"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded"
+      <Card>
+        <form onSubmit={handleSubmit}>
+          <FormGroup>
+            <Label htmlFor="title">
+              Title <RequiredMark>*</RequiredMark>
+            </Label>
+            <Input
+              type="text"
+              id="title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
               required
             />
-          </div>
-        ) : (
-          <div className="mb-4">
-            <label htmlFor="textContent" className="block text-sm font-medium text-gray-700 mb-1">
-              Text <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              id="textContent"
-              value={textContent}
-              onChange={(e) => setTextContent(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded"
-              rows={6}
-              required
-            ></textarea>
-          </div>
-        )}
-        
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="bg-orange-600 text-white px-4 py-2 rounded font-medium hover:bg-orange-700 disabled:bg-orange-300"
-        >
-          {isSubmitting ? 'Submitting...' : 'Submit'}
-        </button>
-      </form>
-    </div>
+          </FormGroup>
+          
+          {type === 'LINK' ? (
+            <FormGroup>
+              <Label htmlFor="url">
+                URL <RequiredMark>*</RequiredMark>
+              </Label>
+              <Input
+                type="url"
+                id="url"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                required
+              />
+            </FormGroup>
+          ) : (
+            <FormGroup>
+              <Label htmlFor="textContent">
+                Text <RequiredMark>*</RequiredMark>
+              </Label>
+              <TextArea
+                id="textContent"
+                value={textContent}
+                onChange={(e) => setTextContent(e.target.value)}
+                rows={6}
+                required
+              />
+            </FormGroup>
+          )}
+          
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? 'Submitting...' : 'Submit'}
+          </Button>
+        </form>
+      </Card>
+    </PageContainer>
   );
 } 
