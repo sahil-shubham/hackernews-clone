@@ -87,6 +87,7 @@ export default function Home() {
         const queryParams = new URLSearchParams({
           page: page.toString(),
           sort,
+          limit: '30',
         });
         
         const headers: HeadersInit = {};
