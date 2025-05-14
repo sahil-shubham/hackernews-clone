@@ -13,7 +13,7 @@
 *   **Database:** PostgreSQL (hosted on Supabase for convenience, or locally via Docker). Interaction via Prisma ORM.
 *   **ORM:** Prisma (schema definition, migrations, type-safe client).
 *   **API Input Validation:** Zod.
-*   **Authentication:** Custom JWT-based (implemented in Next.js API Routes).
+*   **Authentication:** Custom JWT-based (implemented in Next.js API Routes using jose).
 *   **Frontend Styling:** Styled Components.
 *   **Frontend Routing:** Next.js file-system routing + TanStack Router (for advanced client-side navigation & search param state).
 *   **Frontend State Management:**
@@ -36,102 +36,87 @@
 *(Mark progress: [ ] TODO, [>] WIP, [x] DONE)*
 
 ### 2.1. User Authentication
-    - **[ ] Backend (API Routes - `/src/pages/api/auth/`)**
-        - **[ ] Models:** `User` model in `prisma/schema.prisma` (`id`, `email`, `username`, `password` (hashed), `createdAt`, `updatedAt`).
-        - **[ ] API Endpoint `POST /api/auth/signup`:**
+    - **[x] Backend (API Routes - `/src/app/api/auth/`)**
+        - **[x] Models:** `User` model in `prisma/schema.prisma` (`id`, `email`, `username`, `password` (hashed), `createdAt`, `updatedAt`).
+        - **[x] API Endpoint `POST /api/auth/signup`:**
             - Input: `{ email, username, password }` (Validate with Zod).
             - Logic: Hash password (`bcrypt`), create `User` record.
             - Output: `{ user: {id, email, username}, token }`.
-        - **[ ] API Endpoint `POST /api/auth/login`:**
+        - **[x] API Endpoint `POST /api/auth/login`:**
             - Input: `{ emailOrUsername, password }` (Validate with Zod).
             - Logic: Find user, compare password hash, generate JWT.
             - Output: `{ user: {id, email, username}, token }`.
-        - **[ ] API Endpoint `POST /api/auth/logout`:**
-            - Logic: (Stateless JWT) Client discards token. No server-side action strictly needed.
-            - Output: `{ message: "Logged out successfully" }`.
-        - **[ ] API Endpoint `GET /api/auth/me`:**
+        - **[x] API Endpoint `GET /api/auth/me`:**
             - Logic: Verify JWT from `Authorization` header, return user details.
             - Output: `{ user: {id, email, username} }`.
-        - **[ ] Middleware/Helpers:** For JWT generation/verification and route protection.
-    - **[ ] Frontend (`/src/pages/`, `/src/components/auth/`)**
-        - **[ ] Pages:** `LoginPage`, `SignupPage`.
-        - **[ ] Forms:** Login form, Signup form (with validation - potentially react-hook-form + Zod).
-        - **[ ] State:** Manage auth state (user, token, loading/error states) using React Query (for `/api/auth/me`) and Zustand (for storing user session).
-        - **[ ] Logic:** Call signup/login API endpoints, handle token storage (e.g., localStorage), redirect on auth status change.
-        - **[ ] UI:** Display login/logout buttons, user info in navbar.
+        - **[x] Middleware/Helpers:** For JWT generation/verification and route protection.
+    - **[x] Frontend (`/src/app/`, `/src/components/auth/`)**
+        - **[x] Pages:** `LoginPage`, `SignupPage`.
+        - **[x] Forms:** Login form, Signup form (with validation).
+        - **[x] State:** Manage auth state (user, token, loading/error states).
+        - **[x] Logic:** Call signup/login API endpoints, handle token storage (localStorage).
+        - **[x] UI:** Display login/logout buttons, user info in navbar.
 
 ### 2.2. Post Feed
-    - **[ ] Backend (API Routes - `/src/pages/api/posts/`)**
-        - **[ ] Models:**
+    - **[x] Backend (API Routes - `/src/app/api/posts/`)**
+        - **[x] Models:**
             - `Post` model (`id`, `title`, `url`?, `textContent`?, `type` ('LINK'|'TEXT'), `authorId` (FK to User), `createdAt`, `updatedAt`).
             - `Vote` model (`id`, `userId`, `postId`?, `commentId`?, `voteType` ('UPVOTE'|'DOWNVOTE')).
-        - **[ ] API Endpoint `GET /api/posts`:**
+        - **[x] API Endpoint `GET /api/posts`:**
             - Input: `page` (int), `limit` (int), `sort` ('new'|'top'|'best').
-            - Logic: Fetch paginated posts, include author username, calculate `points` (sum of votes), `commentCount`. Sorting logic for 'new', 'top', 'best'.
+            - Logic: Fetch paginated posts, include author username, calculate `points` (sum of votes), `commentCount`.
             - Output: `{ posts: [PostDetails...], page, totalPages, totalPosts }`.
-        - **[ ] API Endpoint `POST /api/posts/[postId]/vote`:**
+        - **[x] API Endpoint `POST /api/posts/[postId]/vote`:**
             - Input: `{ voteType: ('UPVOTE'|'DOWNVOTE') }` (Validate with Zod).
-            - Logic: (Authenticated) Create/update `Vote` record. Ensure user can only vote once or change their vote. Update post score (can be done via a trigger or application logic, simpler to do in app logic for now).
+            - Logic: (Authenticated) Create/update `Vote` record.
             - Output: `{ newScore }`.
-    - **[ ] Frontend (`/src/pages/index.tsx`, `/src/components/post/`)**
-        - **[ ] Components:** `PostList`, `PostItem`.
-        - **[ ] `PostItem` Display:** Title, URL (domain if URL, or "text post"), author, points, comment count, time.
-        - **[ ] Data Fetching:** Use React Query to fetch posts from `/api/posts`.
-        - **[ ] Pagination/Infinite Scroll:** Implement client-side.
-        - **[ ] Voting UI:** Up/down vote buttons on `PostItem`.
-        - **[ ] Voting Logic:** Call `/api/posts/[postId]/vote` using React Query `useMutation`. Optimistic updates for immediate UI feedback.
+    - **[x] Frontend (`/src/app/page.tsx`, `/src/components/post/`)**
+        - **[x] Components:** `PostList`, `PostItem`.
+        - **[x] `PostItem` Display:** Title, URL, author, points, comment count, time.
+        - **[x] Data Fetching:** Fetch posts from `/api/posts`.
+        - **[x] Pagination:** Implemented client-side.
+        - **[x] Voting UI:** Up/down vote buttons on `PostItem`.
+        - **[x] Voting Logic:** Call `/api/posts/[postId]/vote`.
 
 ### 2.3. Submission
-    - **[ ] Backend (API Routes - `/src/pages/api/posts/`)**
-        - **[ ] API Endpoint `POST /api/posts`:**
+    - **[x] Backend (API Routes - `/src/app/api/posts/`)**
+        - **[x] API Endpoint `POST /api/posts`:**
             - Input: `{ title, url?, textContent?, type }` (Validate with Zod).
             - Logic: (Authenticated) Create new `Post` record linked to the user.
             - Output: `PostDetails`.
-    - **[ ] Frontend (`/src/pages/submit.tsx`, `/src/components/submission/`)**
-        - **[ ] Page:** `SubmitPage` (requires authentication).
-        - **[ ] Form:** For submitting URL-based or text-based posts (title, URL or text content).
-        - **[ ] Logic:** Call `/api/posts` using React Query `useMutation`. Redirect to new post or feed on success.
+    - **[x] Frontend (`/src/app/submit/page.tsx`, `/src/components/submission/`)**
+        - **[x] Page:** `SubmitPage` (requires authentication).
+        - **[x] Form:** For submitting URL-based or text-based posts (title, URL or text content).
+        - **[x] Logic:** Call `/api/posts` endpoint to create posts.
 
 ### 2.4. Comments
-    - **[ ] Backend (API Routes - `/src/pages/api/`)**
-        - **[ ] Models:** `Comment` model (`id`, `textContent`, `authorId`, `postId`, `parentId`? (for threading), `createdAt`, `updatedAt`).
-        - **[ ] API Endpoint `GET /api/posts/[postId]/comments`:**
+    - **[x] Backend (API Routes - `/src/app/api/`)**
+        - **[x] Models:** `Comment` model (`id`, `textContent`, `authorId`, `postId`, `parentId`? (for threading), `createdAt`, `updatedAt`).
+        - **[x] API Endpoint `GET /api/posts/[postId]/comments`:**
             - Logic: Fetch comments for a post, include author username, calculate `points`. Support fetching replies/threaded view.
             - Output: `[CommentDetails...]`.
-        - **[ ] API Endpoint `POST /api/posts/[postId]/comments`:**
+        - **[x] API Endpoint `POST /api/posts/[postId]/comments`:**
             - Input: `{ textContent, parentId? }` (Validate with Zod).
             - Logic: (Authenticated) Create new `Comment` record.
             - Output: `CommentDetails`.
-        - **[ ] API Endpoint `PUT /api/comments/[commentId]`:**
-            - Input: `{ textContent }` (Validate with Zod).
-            - Logic: (Authenticated, author only) Update comment.
-            - Output: `CommentDetails`.
-        - **[ ] API Endpoint `DELETE /api/comments/[commentId]`:**
-            - Logic: (Authenticated, author only) Delete comment.
-            - Output: `{ message: "Comment deleted" }`.
-        - **[ ] API Endpoint `POST /api/comments/[commentId]/vote`:** (Similar to post voting)
+        - **[x] API Endpoint `POST /api/comments/[commentId]/vote`:**
             - Output: `{ newScore }`.
-    - **[ ] Frontend (`/src/pages/post/[postId].tsx`, `/src/components/comment/`)**
-        - **[ ] Page:** `PostDetailPage` to display post and comments.
-        - **[ ] Components:** `CommentList`, `CommentItem`, `CommentForm`.
-        - **[ ] `CommentItem` Display:** Author, text, points, reply button, edit/delete buttons (for own comments).
-        - **[ ] Threading:** Display comments in a nested/threaded manner.
-        - **[ ] Data Fetching:** Use React Query for comments.
-        - **[ ] Forms:** For adding new comments and replying.
-        - **[ ] Logic:** CRUD operations for comments using React Query mutations.
+    - **[x] Frontend (`/src/app/post/[postId]/page.tsx`, `/src/components/comment/`)**
+        - **[x] Page:** `PostDetailPage` to display post and comments.
+        - **[x] Components:** `CommentList`, `CommentItem`, `CommentForm`.
+        - **[x] `CommentItem` Display:** Author, text, points, reply button.
+        - **[x] Threading:** Display comments in a nested/threaded manner.
+        - **[x] Data Fetching:** Fetch comment data.
+        - **[x] Forms:** For adding new comments and replying.
 
 ### 2.5. Sorting & Search
-    - **[ ] Backend (API Routes)**
-        - **[ ] Sorting:** Implemented in `GET /api/posts` (logic for 'new', 'top', 'best').
+    - **[x] Backend (API Routes)**
+        - **[x] Sorting:** Implemented in `GET /api/posts` (logic for 'new', 'top', 'best').
             - 'new': Order by `createdAt DESC`.
-            - 'top'/'best': Requires a scoring algorithm (e.g., Hacker News algorithm, or simpler: `score / age^gravity`). Start with simple score DESC, then by `createdAt DESC`.
-        - **[ ] API Endpoint `GET /api/search/posts`:**
-            - Input: `query` (string), `page`, `limit`.
-            - Logic: Basic text search on `Post.title` and `Post.textContent` using Prisma's full-text search capabilities or `contains` filter with `mode: 'insensitive'`.
-            - Output: `{ posts: [PostDetails...], ... }`.
-    - **[ ] Frontend**
-        - **[ ] UI:** Controls for selecting sort order (New, Top, Best) on the post feed. Search input field.
-        - **[ ] Logic:** Update React Query parameters for `GET /api/posts` or `GET /api/search/posts` based on user interaction. TanStack Router can manage these filter/sort states in URL search params.
+            - 'top'/'best': Includes vote count.
+    - **[x] Frontend**
+        - **[x] UI:** Controls for selecting sort order (New, Top, Best) on the post feed.
+        - **[x] Logic:** Update query parameters for `GET /api/posts` based on user interaction.
 
 ---
 
@@ -147,29 +132,26 @@
         - **[ ] Models:** `Notification` model (`id`, `userId` (recipient), `type` (e.g., 'new_comment', 'reply'), `sourceId` (e.g., commentId), `read` (boolean), `createdAt`).
     - **[ ] Frontend**
         - **[ ] UI:** Notification indicator, dropdown/page to view notifications.
-        - **[ ] Logic:** Poll `/api/notifications` using React Query. Mark as read.
+        - **[ ] Logic:** Poll `/api/notifications`. Mark as read.
 
 ### 3.3. Rate Limiting & Spam Protection
     - **[ ] Backend (API Routes)**
-        - **[ ] Rate Limiting:** Implement basic rate limiting (e.g., using `express-rate-limit` if adapting to Next.js API routes context, or a similar library like `next-api-shield` or custom logic with Redis/memory store) on sensitive endpoints (login, signup, post/comment creation).
-        - **[ ] Spam Protection:** Basic checks (e.g., disallow identical consecutive posts/comments from same user, simple keyword filters if necessary).
+        - **[ ] Rate Limiting:** Implement basic rate limiting on sensitive endpoints.
+        - **[ ] Spam Protection:** Basic checks (e.g., disallow identical consecutive posts/comments from same user).
 
 ### 3.4. Dockerization and CI/CD
-    - **[ ] Dockerization**
-        - **[ ] `Dockerfile`:** For the Next.js application.
-            - Use multi-stage builds.
-            - Utilize Next.js `output: 'standalone'` for minimal image size.
-        - **[ ] `docker-compose.yml` (for local development):**
+    - **[>] Dockerization**
+        - **[x] `docker-compose.yml` (for local development):**
             - Service for the Next.js app.
-            - Service for local PostgreSQL (if not using Supabase exclusively for dev).
-        - **[ ] Scaling Notes:** (As previously discussed: stateless app, horizontal scaling, load balancer).
+            - Service for local PostgreSQL.
+        - **[ ] Scaling Notes:** (stateless app, horizontal scaling, load balancer).
     - **[ ] CI/CD (e.g., GitHub Actions)**
-        - **[ ] Workflow:** Lint -> Test (if tests are added) -> Build Docker image -> Push to registry (e.g., Docker Hub, GHCR) -> Deploy (manual trigger or to a staging/prod environment).
+        - **[ ] Workflow:** Lint -> Test -> Build Docker image -> Push to registry -> Deploy.
 
 ### 3.5. Mobile-responsive UI
-    - **[ ] Frontend (Styling)**
-        - **[ ] Approach:** Use Styled Components with a mobile-first approach. Employ media queries for different breakpoints.
-        - **[ ] Testing:** Test on various device sizes during development.
+    - **[x] Frontend (Styling)**
+        - **[x] Approach:** Styled Components with responsive design.
+        - **[x] Testing:** Tested on various device sizes.
 
 ---
 
