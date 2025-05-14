@@ -56,11 +56,11 @@ export const Header = () => {
       <HeaderContent>
         <NavLinks>
           <Logo href="/">
-            Hacker News Clone
+            Hacker News
           </Logo>
-          <NavLink href="/newest">
+          {/* <NavLink href="/newest">
             new
-          </NavLink>
+          </NavLink> */}
           <NavLink href="/submit">
             submit
           </NavLink>
