@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import jwt from 'jsonwebtoken';
+import * as jose from 'jose';
 import { z } from 'zod';
 
 const authPaths = [
@@ -39,9 +39,15 @@ export async function middleware(request: NextRequest) {
   const token = authHeader.split(' ')[1];
   
   try {
-    const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-do-not-use-in-production';
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const result = jwtPayloadSchema.safeParse(decoded);
+    const JWT_SECRET = process.env.JWT_SECRET;
+    if (!JWT_SECRET) {
+      throw new Error('JWT_SECRET is not defined');
+    }
+    
+    const secretKey = new TextEncoder().encode(JWT_SECRET);
+    const { payload } = await jose.jwtVerify(token, secretKey);
+    
+    const result = jwtPayloadSchema.safeParse(payload);
     
     if (!result.success) {
       return NextResponse.json(
@@ -60,6 +66,7 @@ export async function middleware(request: NextRequest) {
       },
     });
   } catch (error) {
+    console.error('Error verifying token:', error);
     return NextResponse.json(
       { error: 'Unauthorized: Invalid token' },
       { status: 401 }

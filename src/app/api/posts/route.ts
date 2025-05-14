@@ -31,27 +31,27 @@ const createPostSchema = z.object({
 });
 
 // Define types for Prisma response
-type PostWithRelations = Prisma.PostGetPayload<{
-  include: {
-    author: {
-      select: {
-        id: true;
-        username: true;
-      };
-    };
-    _count: {
-      select: {
-        votes: true;
-        comments: true;
-      };
-    };
-    votes: {
-      select: {
-        voteType: true;
-      };
-    };
-  };
-}>;
+// type PostWithRelations = Prisma.PostGetPayload<{
+//   include: {
+//     author: {
+//       select: {
+//         id: true;
+//         username: true;
+//       };
+//     };
+//     _count: {
+//       select: {
+//         votes: true;
+//         comments: true;
+//       };
+//     };
+//     votes: {
+//       select: {
+//         voteType: true;
+//       };
+//     };
+//   };
+// }>;
 
 export async function GET(request: NextRequest) {
   try {

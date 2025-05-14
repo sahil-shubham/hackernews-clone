@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import * as jose from 'jose';
 import { prisma } from '@/lib/prisma';
 
 const loginSchema = z.object({
@@ -51,14 +51,35 @@ export async function POST(request: NextRequest) {
     }
     
     // Generate JWT token
-    const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-do-not-use-in-production';
+    const JWT_SECRET = process.env.JWT_SECRET;
+    if (!JWT_SECRET) {
+      throw new Error('JWT_SECRET is not defined');
+    }
+    
     const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
     
-    const token = jwt.sign(
-      { userId: user.id } as any, 
-      JWT_SECRET as jwt.Secret, 
-      { expiresIn: JWT_EXPIRES_IN } as jwt.SignOptions
-    );
+    // Convert expiration to seconds
+    let expirationTime = 7 * 24 * 60 * 60; // Default 7 days in seconds
+    if (JWT_EXPIRES_IN) {
+      const match = JWT_EXPIRES_IN.match(/^(\d+)([dhms])$/);
+      if (match) {
+        const value = parseInt(match[1]);
+        const unit = match[2];
+        switch (unit) {
+          case 'd': expirationTime = value * 24 * 60 * 60; break;
+          case 'h': expirationTime = value * 60 * 60; break;
+          case 'm': expirationTime = value * 60; break;
+          case 's': expirationTime = value; break;
+        }
+      }
+    }
+    
+    const secretKey = new TextEncoder().encode(JWT_SECRET);
+    const token = await new jose.SignJWT({ userId: user.id })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setIssuedAt()
+      .setExpirationTime(Math.floor(Date.now() / 1000) + expirationTime)
+      .sign(secretKey);
     
     return NextResponse.json({
       user: {

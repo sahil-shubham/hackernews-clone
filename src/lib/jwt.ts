@@ -1,21 +1,44 @@
-import jwt from 'jsonwebtoken';
+import * as jose from 'jose';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-do-not-use-in-production';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7D';
+const JWT_SECRET = process.env.JWT_SECRET;
 
 export interface JwtPayload {
   userId: string;
 }
 
-export function signJwtToken(payload: JwtPayload): string {
-  return jwt.sign(payload, JWT_SECRET as jwt.Secret, {
-    expiresIn: JWT_EXPIRES_IN as jwt.SignOptions['expiresIn'],
-  });
+export async function signJwtToken(payload: JwtPayload): Promise<string> {
+  if (!JWT_SECRET) {
+    throw new Error('JWT_SECRET is not defined');
+  }
+  
+  const secretKey = new TextEncoder().encode(JWT_SECRET);
+  
+  // Default expiration to 7 days if not specified
+  const expirationTime = Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60);
+  
+  return await new jose.SignJWT({ ...payload })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime(expirationTime)
+    .sign(secretKey);
 }
 
-export function verifyJwtToken(token: string): JwtPayload | null {
+export async function verifyJwtToken(token: string): Promise<JwtPayload | null> {
+  if (!JWT_SECRET) {
+    return null;
+  }
+  
   try {
-    return jwt.verify(token, JWT_SECRET as jwt.Secret) as JwtPayload;
+    const secretKey = new TextEncoder().encode(JWT_SECRET);
+    const { payload } = await jose.jwtVerify(token, secretKey);
+    
+    // Check if payload has the required userId property
+    if (typeof payload === 'object' && payload !== null && 'userId' in payload) {
+      return {
+        userId: payload.userId as string
+      };
+    }
+    return null;
   } catch (error) {
     return null;
   }
