@@ -17,12 +17,10 @@ const Container = styled.div`
 `;
 
 const PostListContainer = styled.div`
-  max-width: 48rem;
   margin: 0 auto;
 `;
 
 const EmptyStateContainer = styled.div`
-  max-width: 48rem;
   margin: 0 auto;
   text-align: center;
   padding: 2.5rem 0;
