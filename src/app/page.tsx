@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import PostList from '@/components/post/PostList';
 import { Post } from '@/components/post/PostItem';
 import { useAuth } from '@/hooks/useAuth';
 import styled from 'styled-components';
-import { PageContainer, Button, FlexContainer, ErrorText } from '@/styles/StyledComponents';
+import { PageContainer } from '@/styles/StyledComponents';
 
 // Styled components for this page
 const SortingTabs = styled.div`
@@ -59,7 +59,7 @@ const PageButton = styled.button<{ active?: boolean }>`
   }
 `;
 
-export default function Home() {
+function Home() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { user, token } = useAuth();
@@ -243,5 +243,13 @@ export default function Home() {
         </PaginationContainer>
       )}
     </PageContainer>
+  );
+}
+
+export default function HomeWrapper() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <Home />
+    </Suspense>
   );
 }

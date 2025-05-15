@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
-import { Prisma } from '@prisma/client';
 
 // Define types for transformed comments
 interface TransformedComment {
@@ -17,6 +16,8 @@ interface TransformedComment {
   hasVoted: boolean;
   replies: TransformedComment[];
 }
+
+type Params = Promise<{ postId: string }>
 
 // Type for comment with relations
 interface CommentWithRelations {
@@ -41,10 +42,10 @@ const commentSchema = z.object({
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { postId: string } }
+  { params }: { params: Params }
 ) {
   try {
-    const { postId } = params;
+    const { postId } = await params;
     
     // Get userId from header if available
     const userId = request.headers.get('x-user-id');
@@ -127,10 +128,10 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { postId: string } }
+  { params }: { params: Params }
 ) {
   try {
-    const { postId } = params;
+    const { postId } = await params;
     const userId = request.headers.get('x-user-id');
     
     if (!userId) {

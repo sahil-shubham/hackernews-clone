@@ -13,8 +13,6 @@ import {
   Input, 
   TextArea, 
   Button,
-  ErrorText,
-  FlexContainer
 } from '@/styles/StyledComponents';
 
 // Type selector styled components

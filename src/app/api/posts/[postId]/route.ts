@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+type Params = Promise<{ postId: string }>
+
 export async function GET(
   request: NextRequest,
-  { params }: { params: { postId: string } }
+  { params }: { params: Params }
 ) {
   try {
-    const { postId } = params;
+    const { postId } = await params;
     
     // Get userId from header if available
     const userId = request.headers.get('x-user-id');
