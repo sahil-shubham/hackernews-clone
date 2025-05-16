@@ -18,7 +18,7 @@ type PopulatedNotification = Prisma.NotificationGetPayload<typeof notificationPa
 // Zod schema for query parameters
 const querySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
-  limit: z.coerce.number().int().positive().max(50).default(20),
+  limit: z.coerce.number().int().positive().max(100).default(20),
 });
 
 // Zod schema for the transformed notification (API response shape)
@@ -52,9 +52,12 @@ export async function GET(request: NextRequest) {
     }
 
     const url = new URL(request.url);
+    const pageParam = url.searchParams.get('page');
+    const limitParam = url.searchParams.get('limit');
+
     const parsedQuery = querySchema.safeParse({
-      page: url.searchParams.get('page'),
-      limit: url.searchParams.get('limit'),
+      page: pageParam === null ? undefined : pageParam,
+      limit: limitParam === null ? undefined : limitParam,
     });
 
     if (!parsedQuery.success) {
