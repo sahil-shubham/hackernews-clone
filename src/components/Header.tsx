@@ -213,7 +213,7 @@ const Header = () => {
     if (searchTerm !== searchTermFromUrl) {
       setSearchTerm(searchTermFromUrl);
     }
-  }, [searchTermFromUrl, searchTerm]);
+  }, [searchTermFromUrl]);
 
   useEffect(() => {
     if (isSearchOpen && searchInputRef.current) {
