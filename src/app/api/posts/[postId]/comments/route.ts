@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { NotificationType } from '@prisma/client';
 
 // Define types for transformed comments
 interface TransformedComment {
@@ -154,32 +155,34 @@ export async function POST(
     
     const { textContent, parentId } = result.data;
     
-    // Check if post exists
-    const postExists = await prisma.post.findUnique({
+    // Check if post exists and get its authorId for potential notification
+    const postData = await prisma.post.findUnique({
       where: { id: postId },
-      select: { id: true },
+      select: { id: true, authorId: true },
     });
     
-    if (!postExists) {
+    if (!postData) {
       return NextResponse.json(
         { error: 'Post not found' },
         { status: 404 }
       );
     }
     
-    // If parentId is provided, verify it exists
+    let parentCommentAuthorId: string | null = null;
+    // If parentId is provided, verify it exists and get its authorId
     if (parentId) {
-      const parentExists = await prisma.comment.findUnique({
+      const parentCommentData = await prisma.comment.findUnique({
         where: { id: parentId },
-        select: { id: true },
+        select: { id: true, authorId: true },
       });
       
-      if (!parentExists) {
+      if (!parentCommentData) {
         return NextResponse.json(
           { error: 'Parent comment not found' },
           { status: 404 }
         );
       }
+      parentCommentAuthorId = parentCommentData.authorId;
     }
     
     // Create comment
@@ -208,6 +211,32 @@ export async function POST(
       },
     });
     
+    // --- Notification Logic ---
+    if (parentId && parentCommentAuthorId && parentCommentAuthorId !== userId) {
+      // It's a reply, and the replier is not the parent comment's author
+      await prisma.notification.create({
+        data: {
+          type: NotificationType.REPLY_TO_COMMENT,
+          recipientId: parentCommentAuthorId,
+          triggeringUserId: userId,
+          postId: postId,
+          commentId: comment.id,
+        },
+      });
+    } else if (!parentId && postData.authorId !== userId) {
+      // It's a direct comment on a post, and commenter is not the post's author
+      await prisma.notification.create({
+        data: {
+          type: NotificationType.NEW_COMMENT_ON_POST,
+          recipientId: postData.authorId,
+          triggeringUserId: userId,
+          postId: postId,
+          commentId: comment.id,
+        },
+      });
+    }
+    // --- End Notification Logic ---
+
     return NextResponse.json(
       {
         id: comment.id,
