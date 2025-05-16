@@ -49,30 +49,50 @@ async function main() {
   
   // Clean database if in development mode
   if (SEED_MODE === 'development') {
-    console.log('Cleaning database...');
-    await prisma.vote.deleteMany({});
-    await prisma.comment.deleteMany({});
-    await prisma.post.deleteMany({});
-    await prisma.user.deleteMany({});
+    console.log('Cleaning database using TRUNCATE...');
+    // List your table names as they appear in the database
+    // These are typically the pluralized versions of your model names or @@map values
+    const tableNames = [
+      'notifications',
+      'votes',
+      'comments',
+      'posts',
+      'users'
+      // Add any other tables managed by Prisma that need cleaning
+    ];
+
+    try {
+      // Using $executeRawUnsafe because table names are part of a joined string.
+      // Ensure tableNames are controlled and not from user input in other contexts.
+      await prisma.$executeRawUnsafe(`TRUNCATE TABLE "${tableNames.join('", "')}" RESTART IDENTITY CASCADE;`);
+      console.log('Database cleaned successfully using TRUNCATE.');
+    } catch (error) {
+      console.error('Error during TRUNCATE operation:', error);
+      console.warn('Falling back to deleteMany operations...');
+      // Fallback to deleteMany if TRUNCATE fails (e.g., permissions)
+      // This is the original slower method
+      const deleted = await prisma.$transaction([
+        prisma.notification.deleteMany(),
+        prisma.vote.deleteMany(),
+        prisma.comment.deleteMany(), 
+        prisma.post.deleteMany(),
+        prisma.user.deleteMany()
+      ]);
+      console.log('Database cleaned successfully using deleteMany:');
+      console.log(`Deleted ${deleted[0].count} notifications`);
+      console.log(`Deleted ${deleted[1].count} votes`);
+      console.log(`Deleted ${deleted[2].count} comments`);
+      console.log(`Deleted ${deleted[3].count} posts`);
+      console.log(`Deleted ${deleted[4].count} users`);
+    }
   }
   
-  // Create admin user (consistent in all environments)
-  console.log('Creating admin user...');
   const hashedPassword = await hash('password123', 10);
-  const adminUser = await prisma.user.upsert({
-    where: { email: 'admin@example.com' },
-    update: { password: hashedPassword },
-    create: {
-      email: 'admin@example.com',
-      username: 'admin',
-      password: hashedPassword,
-    },
-  });
   
   // Create regular users
-  console.log(`Preparing ${USERS_COUNT - 1} regular users...`);
+  console.log(`Preparing ${USERS_COUNT} regular users...`);
   const regularUsersDataForCreateMany: Prisma.UserCreateManyInput[] = [];
-  for (let i = 0; i < USERS_COUNT - 1; i++) {
+  for (let i = 0; i < USERS_COUNT; i++) {
     const firstName = fakerEN.person.firstName();
     const lastName = fakerEN.person.lastName();
     regularUsersDataForCreateMany.push({
@@ -178,6 +198,64 @@ async function main() {
     await prisma.comment.createMany({ data: repliesData });
     console.log(`${repliesData.length} replies created.`);
   }
+
+  // --- Notification Seeding Logic ---
+  console.log('Preparing notifications based on seeded comments...');
+  const allSeededComments = await prisma.comment.findMany({
+    include: {
+      post: { select: { authorId: true, id: true } },     // Get post author
+      parent: { select: { authorId: true } }, // Get parent comment author
+      // authorId is already on comment, no need to include author object just for id
+    },
+  });
+
+  const notificationsToCreate: Prisma.NotificationCreateManyInput[] = [];
+  const thirtyDaysAgoForNotifs = new Date(); // For notification createdAt
+  thirtyDaysAgoForNotifs.setDate(thirtyDaysAgoForNotifs.getDate() - 30);
+
+  for (const comment of allSeededComments) {
+    const commenterId = comment.authorId;
+    // Ensure createdAt for notification is after the comment itself, with a small random delay
+    const baseDate = new Date(comment.createdAt);
+    const notificationCreatedAt = fakerEN.date.soon({ days: 1, refDate: baseDate });
+
+    if (comment.parentId && comment.parent) { // It's a reply
+      const parentCommentAuthorId = comment.parent.authorId;
+      if (parentCommentAuthorId !== commenterId) {
+        notificationsToCreate.push({
+          type: 'REPLY_TO_COMMENT',
+          recipientId: parentCommentAuthorId,
+          triggeringUserId: commenterId,
+          postId: comment.postId,
+          commentId: comment.id,
+          createdAt: notificationCreatedAt,
+          read: Math.random() > 0.7, // Make some notifications read
+        });
+      }
+    } else if (comment.post) { // It's a direct comment on a post
+      const postAuthorId = comment.post.authorId;
+      if (postAuthorId !== commenterId) {
+        notificationsToCreate.push({
+          type: 'NEW_COMMENT_ON_POST',
+          recipientId: postAuthorId,
+          triggeringUserId: commenterId,
+          postId: comment.postId,
+          commentId: comment.id,
+          createdAt: notificationCreatedAt,
+          read: Math.random() > 0.7, // Make some notifications read
+        });
+      }
+    }
+  }
+
+  if (notificationsToCreate.length > 0) {
+    await prisma.notification.createMany({
+      data: notificationsToCreate,
+      skipDuplicates: true, 
+    });
+    console.log(`${notificationsToCreate.length} notifications created.`);
+  }
+  // --- End Notification Seeding Logic ---
 
   // 5. Batch Create Votes
   console.log(`Preparing votes...`);
