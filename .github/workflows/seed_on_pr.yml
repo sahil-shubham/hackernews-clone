@@ -1,0 +1,35 @@
+name: Backfill Staging DB manually
+
+on:
+  workflow_dispatch:
+
+jobs:
+  run-seed:
+    runs-on: ubuntu-latest
+    
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      SEED_MODE: ${{ secrets.SEED_MODE }}
+      USERS_COUNT: ${{ secrets.USERS_COUNT }}
+      POSTS_PER_USER: ${{ secrets.POSTS_PER_USER }}
+      COMMENTS_PER_POST: ${{ secrets.COMMENTS_PER_POST }}
+      MAX_REPLIES_PER_COMMENT: ${{ secrets.MAX_REPLIES_PER_COMMENT }}
+      VOTES_PER_POST_TARGET: ${{ secrets.VOTES_PER_POST_TARGET }}
+      
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: yarn prisma generate
+
+      - name: Run seed script
+        run: yarn seed
