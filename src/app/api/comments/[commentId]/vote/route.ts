@@ -7,9 +7,9 @@ const voteSchema = z.object({
   voteType: z.enum(['UPVOTE', 'DOWNVOTE']),
 });
 
-type Params = { params: { commentId: string } };
+type Params = Promise<{ commentId: string }>
 
-export async function POST(request: NextRequest, { params }: Params) {
+export async function POST(request: NextRequest, { params }: { params: Params }) {
   try {
     const userId = request.headers.get('x-user-id');
     if (!userId) {
@@ -19,7 +19,7 @@ export async function POST(request: NextRequest, { params }: Params) {
       );
     }
 
-    const { commentId } = params;
+    const { commentId } = await params;
 
     // Verify comment exists
     const comment = await prisma.comment.findUnique({

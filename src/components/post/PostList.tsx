@@ -13,7 +13,7 @@ interface PostListProps {
 
 // Styled Components
 const Container = styled.div`
-  padding: 1.5rem 0;
+  padding: 0;
 `;
 
 const PostListContainer = styled.div`

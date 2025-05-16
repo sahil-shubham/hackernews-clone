@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
     const userId = request.headers.get('x-user-id');
 
     // Create base query
-    let where: any = {};
+    const where: any = {};
     if (search) {
       // Prepare search term for PostgreSQL FTS: replace spaces with '&' for AND logic
       // Also, escape special FTS characters if necessary, though for simple terms this might be enough.

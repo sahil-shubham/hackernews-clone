@@ -9,51 +9,6 @@ import styled from 'styled-components';
 import { PageContainer } from '@/styles/StyledComponents';
 
 // Styled components for this page
-const SortingTabs = styled.div`
-  display: flex;
-  border-bottom: 1px solid ${props => props.theme.colors.secondaryLight};
-  margin-bottom: ${props => props.theme.space.lg};
-`;
-
-const SortTab = styled.button<{ active: boolean }>`
-  padding: ${props => `${props.theme.space.md} ${props.theme.space.lg}`};
-  font-weight: ${props => props.theme.fontWeights.medium};
-  color: ${props => props.active ? props.theme.colors.primary : props.theme.colors.secondary};
-  border-bottom: ${props => props.active ? `2px solid ${props.theme.colors.primary}` : 'none'};
-  
-  &:hover {
-    color: ${props => props.active ? props.theme.colors.primary : props.theme.colors.secondaryDark};
-  }
-`;
-
-const SearchContainer = styled.div`
-  display: flex;
-  margin-bottom: ${props => props.theme.space.lg};
-  gap: ${props => props.theme.space.sm};
-`;
-
-const SearchInput = styled.input`
-  flex-grow: 1;
-  padding: ${props => props.theme.space.md};
-  border: 1px solid ${props => props.theme.colors.secondaryLight};
-  border-radius: ${props => props.theme.radii.md};
-  font-size: ${props => props.theme.fontSizes.md};
-`;
-
-const SearchButton = styled.button`
-  padding: ${props => `${props.theme.space.md} ${props.theme.space.lg}`};
-  background-color: ${props => props.theme.colors.primary};
-  color: white;
-  border: none;
-  border-radius: ${props => props.theme.radii.md};
-  cursor: pointer;
-  font-weight: ${props => props.theme.fontWeights.medium};
-
-  &:hover {
-    background-color: ${props => props.theme.colors.primaryHover};
-  }
-`;
-
 const ErrorAlert = styled.div`
   background-color: #fee2e2;
   border: 1px solid ${props => props.theme.colors.error};
@@ -96,9 +51,6 @@ function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // State for the search input field itself
-  const [currentSearchInput, setCurrentSearchInput] = useState(searchParams.get('search') || '');
-  
   const [pagination, setPagination] = useState({
     page: 1,
     totalPages: 1,
@@ -112,9 +64,6 @@ function Home() {
 
   // Fetch posts when query parameters change
   useEffect(() => {
-    // Sync input field if URL search param changes (e.g., browser back/forward)
-    setCurrentSearchInput(searchQueryFromUrl);
-    
     const fetchPosts = async () => {
       setLoading(true);
       setError(null);
@@ -201,16 +150,6 @@ function Home() {
     }
   };
 
-  // Change sort type
-  const handleSortChange = (newSort: string) => {
-    const currentParams = new URLSearchParams(); // Start fresh to easily remove search
-    currentParams.set('sort', newSort);
-    currentParams.set('page', '1'); // Reset to page 1 on sort change
-    // No need to explicitly set search if it's not there
-    router.push(`/?${currentParams.toString()}`);
-    setCurrentSearchInput(''); // Clear the search input field state
-  };
-
   // Pagination navigation
   const goToPage = (pageNum: number) => {
     const currentParams = new URLSearchParams(window.location.search);
@@ -218,60 +157,8 @@ function Home() {
     router.push(`/?${currentParams.toString()}`);
   };
 
-  const handleSearchInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setCurrentSearchInput(event.target.value);
-  };
-
-  const performSearch = () => {
-    const currentParams = new URLSearchParams(window.location.search);
-    const trimmedSearchInput = currentSearchInput.trim();
-
-    if (trimmedSearchInput) {
-      currentParams.set('search', trimmedSearchInput);
-    } else {
-      currentParams.delete('search');
-    }
-    currentParams.set('page', '1'); // Reset to page 1 on new search
-    router.push(`/?${currentParams.toString()}`);
-    // The useEffect will now pick up the change in searchParams via searchQueryFromUrl
-  };
-
   return (
     <PageContainer>
-      {/* Search Input */}
-      <SearchContainer>
-        <SearchInput
-          type="text"
-          placeholder="Search posts..."
-          value={currentSearchInput}
-          onChange={handleSearchInputChange}
-          onKeyDown={(e) => e.key === 'Enter' && performSearch()}
-        />
-        <SearchButton onClick={performSearch}>Search</SearchButton>
-      </SearchContainer>
-
-      {/* Sorting tabs */}
-      <SortingTabs>
-        <SortTab
-          active={sort === 'new'}
-          onClick={() => handleSortChange('new')}
-        >
-          New
-        </SortTab>
-        <SortTab
-          active={sort === 'top'}
-          onClick={() => handleSortChange('top')}
-        >
-          Top
-        </SortTab>
-        <SortTab
-          active={sort === 'best'}
-          onClick={() => handleSortChange('best')}
-        >
-          Best
-        </SortTab>
-      </SortingTabs>
-      
       {/* Error message */}
       {error && <ErrorAlert>{error}</ErrorAlert>}
       
