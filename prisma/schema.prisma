@@ -2,7 +2,8 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearchPostgres"]
 }
 
 datasource db {
@@ -19,10 +20,12 @@ model User {
   updatedAt DateTime @updatedAt
 
   // Relations
-  posts     Post[]
-  comments  Comment[]
-  votes     Vote[]
-  
+  posts                  Post[]
+  comments               Comment[]
+  votes                  Vote[]
+  notifications          Notification[] @relation("UserNotifications")
+  triggeredNotifications Notification[] @relation("TriggeredNotifications")
+
   @@map("users")
 }
 
@@ -34,13 +37,14 @@ model Post {
   type        PostType
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  
+
   // Relations
-  authorId    String
-  author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  comments    Comment[]
-  votes       Vote[]
-  
+  authorId      String
+  author        User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  comments      Comment[]
+  votes         Vote[]
+  notifications Notification[]
+
   @@map("posts")
 }
 
@@ -49,17 +53,18 @@ model Comment {
   textContent String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  
+
   // Relations
-  authorId    String
-  author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  postId      String
-  post        Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  parentId    String?
-  parent      Comment? @relation("CommentToComment", fields: [parentId], references: [id], onDelete: SetNull)
-  replies     Comment[] @relation("CommentToComment")
-  votes       Vote[]
-  
+  authorId      String
+  author        User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  postId        String
+  post          Post           @relation(fields: [postId], references: [id], onDelete: Cascade)
+  parentId      String?
+  parent        Comment?       @relation("CommentToComment", fields: [parentId], references: [id], onDelete: SetNull)
+  replies       Comment[]      @relation("CommentToComment")
+  votes         Vote[]
+  notifications Notification[]
+
   @@map("comments")
 }
 
@@ -68,7 +73,7 @@ model Vote {
   voteType  VoteType
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   // Relations
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -76,11 +81,34 @@ model Vote {
   post      Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
   commentId String?
   comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
-  
+
   // A user can only vote once on a post or comment
   @@unique([userId, postId])
   @@unique([userId, commentId])
   @@map("votes")
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  createdAt DateTime         @default(now())
+  read      Boolean          @default(false)
+  type      NotificationType
+
+  recipientId String
+  recipient   User   @relation("UserNotifications", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  // The user who performed the action that triggered the notification
+  triggeringUserId String
+  triggeringUser   User   @relation("TriggeredNotifications", fields: [triggeringUserId], references: [id], onDelete: Cascade)
+
+  // Optional fields to link to the source of the notification
+  postId    String? // If it's related to a post (e.g. new comment on your post)
+  post      Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  commentId String? // If it's related to a comment (e.g. reply to your comment or new comment if post is also linked)
+  comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@index([recipientId, read, createdAt]) // For efficient querying of user's unread notifications
+  @@map("notifications")
 }
 
 enum PostType {
@@ -91,4 +119,10 @@ enum PostType {
 enum VoteType {
   UPVOTE
   DOWNVOTE
-} 
+}
+
+enum NotificationType {
+  NEW_COMMENT_ON_POST // Someone commented on your post
+  REPLY_TO_COMMENT // Someone replied to your comment
+  // Potentially others like NEW_VOTE_ON_POST, NEW_VOTE_ON_COMMENT etc.
+}

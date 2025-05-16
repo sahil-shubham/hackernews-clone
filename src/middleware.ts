@@ -6,6 +6,7 @@ const authPaths = [
   '/api/posts',
   '/api/comments',
   '/api/auth/me',
+  '/api/notifications',
 ];
 
 export const jwtPayloadSchema = z.object({

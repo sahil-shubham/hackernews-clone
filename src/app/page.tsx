@@ -9,23 +9,6 @@ import styled from 'styled-components';
 import { PageContainer } from '@/styles/StyledComponents';
 
 // Styled components for this page
-const SortingTabs = styled.div`
-  display: flex;
-  border-bottom: 1px solid ${props => props.theme.colors.secondaryLight};
-  margin-bottom: ${props => props.theme.space.lg};
-`;
-
-const SortTab = styled.button<{ active: boolean }>`
-  padding: ${props => `${props.theme.space.md} ${props.theme.space.lg}`};
-  font-weight: ${props => props.theme.fontWeights.medium};
-  color: ${props => props.active ? props.theme.colors.primary : props.theme.colors.secondary};
-  border-bottom: ${props => props.active ? `2px solid ${props.theme.colors.primary}` : 'none'};
-  
-  &:hover {
-    color: ${props => props.active ? props.theme.colors.primary : props.theme.colors.secondaryDark};
-  }
-`;
-
 const ErrorAlert = styled.div`
   background-color: #fee2e2;
   border: 1px solid ${props => props.theme.colors.error};
@@ -67,15 +50,17 @@ function Home() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
   const [pagination, setPagination] = useState({
     page: 1,
     totalPages: 1,
     totalPosts: 0,
   });
 
-  // Get current query parameters
+  // Get current query parameters for fetching
   const page = Number(searchParams.get('page') || '1');
   const sort = searchParams.get('sort') || 'new';
+  const searchQueryFromUrl = searchParams.get('search') || ''; // Reactive to URL changes
 
   // Fetch posts when query parameters change
   useEffect(() => {
@@ -89,6 +74,11 @@ function Home() {
           sort,
           limit: '30',
         });
+        
+        // Use the searchQueryFromUrl which is always synced with the URL
+        if (searchQueryFromUrl) {
+          queryParams.set('search', searchQueryFromUrl);
+        }
         
         const headers: HeadersInit = {};
         if (token) {
@@ -119,7 +109,7 @@ function Home() {
     };
     
     fetchPosts();
-  }, [page, sort, token]);
+  }, [page, sort, token, searchQueryFromUrl]); // Depend on searchQueryFromUrl
 
   // Handle post voting
   const handleVote = async (postId: string, voteType: 'UPVOTE' | 'DOWNVOTE') => {
@@ -160,40 +150,15 @@ function Home() {
     }
   };
 
-  // Change sort type
-  const handleSortChange = (newSort: string) => {
-    router.push(`/?sort=${newSort}`);
-  };
-
   // Pagination navigation
   const goToPage = (pageNum: number) => {
-    router.push(`/?page=${pageNum}&sort=${sort}`);
+    const currentParams = new URLSearchParams(window.location.search);
+    currentParams.set('page', pageNum.toString());
+    router.push(`/?${currentParams.toString()}`);
   };
 
   return (
     <PageContainer>
-      {/* Sorting tabs */}
-      <SortingTabs>
-        <SortTab
-          active={sort === 'new'}
-          onClick={() => handleSortChange('new')}
-        >
-          New
-        </SortTab>
-        <SortTab
-          active={sort === 'top'}
-          onClick={() => handleSortChange('top')}
-        >
-          Top
-        </SortTab>
-        <SortTab
-          active={sort === 'best'}
-          onClick={() => handleSortChange('best')}
-        >
-          Best
-        </SortTab>
-      </SortingTabs>
-      
       {/* Error message */}
       {error && <ErrorAlert>{error}</ErrorAlert>}
       

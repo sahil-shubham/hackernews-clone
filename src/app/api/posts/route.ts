@@ -7,6 +7,7 @@ const querySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(100).default(30),
   sort: z.enum(['new', 'top', 'best']).default('new'),
+  search: z.string().nullable().optional(),
 });
 
 // Validate post creation
@@ -60,6 +61,7 @@ export async function GET(request: NextRequest) {
       page: url.searchParams.get('page'),
       limit: url.searchParams.get('limit'),
       sort: url.searchParams.get('sort'),
+      search: url.searchParams.get('search'),
     });
 
     if (!parsed.success) {
@@ -69,14 +71,28 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { page, limit, sort } = parsed.data;
+    const { page, limit, sort, search } = parsed.data;
     const skip = (page - 1) * limit;
 
     // Get userId from header if available (set by middleware)
     const userId = request.headers.get('x-user-id');
 
     // Create base query
-    const where = {};
+    const where: any = {};
+    if (search) {
+      // Prepare search term for PostgreSQL FTS: replace spaces with '&' for AND logic
+      // Also, escape special FTS characters if necessary, though for simple terms this might be enough.
+      // More robust parsing might involve splitting by space and joining with ' & '
+      // or handling quotes for phrase searches, etc.
+      const ftsSearchTerm = search.trim().split(/\s+/).join(' & ');
+      
+      if (ftsSearchTerm) { // Ensure the term is not empty after processing
+        where.OR = [
+          { title: { search: ftsSearchTerm } },
+          { textContent: { search: ftsSearchTerm } },
+        ];
+      }
+    }
     
     // Define sort order based on sort parameter
     let orderBy: any = {};
