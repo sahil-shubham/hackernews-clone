@@ -3,15 +3,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
-import { 
-  FormCard, 
-  Heading, 
-  FormGroup, 
-  Label, 
-  Input, 
-  Button, 
-  ErrorText 
-} from '@/styles/StyledComponents';
+import * as Styled from "@/styles/components"
 
 const LoginForm: React.FC = () => {
   const [emailOrUsername, setEmailOrUsername] = useState('');
@@ -50,46 +42,46 @@ const LoginForm: React.FC = () => {
   };
 
   return (
-    <FormCard>
-      <Heading level={2}>Login</Heading>
+    <Styled.FormCard>
+      <Styled.Heading level={2}>Login</Styled.Heading>
       <form onSubmit={handleSubmit}>
-        <FormGroup>
-          <Label htmlFor="emailOrUsername">
+        <Styled.FormGroup>
+          <Styled.Label htmlFor="emailOrUsername">
             Email or Username
-          </Label>
-          <Input
+          </Styled.Label>
+          <Styled.Input
             id="emailOrUsername"
             type="text"
             value={emailOrUsername}
             onChange={(e) => setEmailOrUsername(e.target.value)}
             required
           />
-        </FormGroup>
+        </Styled.FormGroup>
         
-        <FormGroup>
-          <Label htmlFor="password">
+        <Styled.FormGroup>
+          <Styled.Label htmlFor="password">
             Password
-          </Label>
-          <Input
+          </Styled.Label>
+          <Styled.Input
             id="password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
           />
-        </FormGroup>
+        </Styled.FormGroup>
         
-        <Button 
+        <Styled.Button 
           type="submit" 
           disabled={isSubmitting}
           fullWidth
         >
           {isSubmitting ? 'Logging in...' : 'Login'}
-        </Button>
+        </Styled.Button>
         
-        {error && <ErrorText>{error}</ErrorText>}
+        {error && <Styled.ErrorText>{error}</Styled.ErrorText>}
       </form>
-    </FormCard>
+    </Styled.FormCard>
   );
 };
 

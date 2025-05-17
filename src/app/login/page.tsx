@@ -1,17 +1,17 @@
-'use client';
+'use client'
 
-import LoginForm from '@/components/auth/LoginForm';
-import { PageContainer, Text, StyledLink, FlexContainer } from '@/styles/StyledComponents';
+import LoginForm from '@/components/auth/LoginForm'
+import * as Styled from '@/styles/components'
 
 export default function LoginPage() {
   return (
-    <PageContainer>
+    <Styled.PageContainer>
       <LoginForm />
-      <FlexContainer justify="center" direction="row">
-        <Text size="md">
-          Don&apos;t have an account? <StyledLink href="/signup">Sign up</StyledLink>
-        </Text>
-      </FlexContainer>
-    </PageContainer>
-  );
-} 
+      <Styled.FlexContainer justify="center" direction="row">
+        <Styled.Text size="md">
+          Don&apos;t have an account? <Styled.StyledLink href="/signup">Sign up</Styled.StyledLink>
+        </Styled.Text>
+      </Styled.FlexContainer>
+    </Styled.PageContainer>
+  )
+}

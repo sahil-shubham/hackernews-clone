@@ -3,15 +3,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
-import { 
-  FormCard, 
-  Heading, 
-  FormGroup, 
-  Label, 
-  Input, 
-  Button, 
-  ErrorText 
-} from '@/styles/StyledComponents';
+import * as Styled from "@/styles/components"
 
 const SignupForm: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -62,72 +54,72 @@ const SignupForm: React.FC = () => {
   };
 
   return (
-    <FormCard>
-      <Heading level={2}>Sign Up</Heading>
+    <Styled.FormCard>
+      <Styled.Heading level={2}>Sign Up</Styled.Heading>
       <form onSubmit={handleSubmit}>
-        <FormGroup>
-          <Label htmlFor="email">
+        <Styled.FormGroup>
+          <Styled.Label htmlFor="email">
             Email
-          </Label>
-          <Input
+          </Styled.Label>
+          <Styled.Input
             id="email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
           />
-        </FormGroup>
+        </Styled.FormGroup>
         
-        <FormGroup>
-          <Label htmlFor="username">
+        <Styled.FormGroup>
+          <Styled.Label htmlFor="username">
             Username
-          </Label>
-          <Input
+          </Styled.Label>
+          <Styled.Input
             id="username"
             type="text"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             required
           />
-        </FormGroup>
+        </Styled.FormGroup>
         
-        <FormGroup>
-          <Label htmlFor="password">
+        <Styled.FormGroup>
+          <Styled.Label htmlFor="password">
             Password
-          </Label>
-          <Input
+          </Styled.Label>
+          <Styled.Input
             id="password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
           />
-        </FormGroup>
+        </Styled.FormGroup>
         
-        <FormGroup>
-          <Label htmlFor="confirmPassword">
+        <Styled.FormGroup>
+          <Styled.Label htmlFor="confirmPassword">
             Confirm Password
-          </Label>
-          <Input
+          </Styled.Label>
+          <Styled.Input
             id="confirmPassword"
             type="password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
           />
-        </FormGroup>
+        </Styled.FormGroup>
         
-        <Button 
+        <Styled.Button 
           type="submit" 
           disabled={isSubmitting}
           fullWidth
         >
           {isSubmitting ? 'Signing up...' : 'Sign Up'}
-        </Button>
+        </Styled.Button>
         
-        {error && <ErrorText>{error}</ErrorText>}
+        {error && <Styled.ErrorText>{error}</Styled.ErrorText>}
       </form>
-    </FormCard>
+    </Styled.FormCard>
   );
 };
 
