@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import redis from '@/lib/redis'; // Import the Redis client
+
+const CACHE_TTL_SECONDS = 10 * 60; // 10 minutes
 
 // Validate query parameters with Zod
 const querySchema = z.object({
@@ -72,6 +75,25 @@ export async function GET(request: NextRequest) {
     }
 
     const { page, limit, sort, search } = parsed.data;
+
+    // Only cache the first page for the specified sort orders
+    const canCache = page === 1 && ['new', 'top', 'best'].includes(sort) && redis;
+    const cacheKey = canCache ? `posts:${sort}:page:1:limit:${limit}` : null;
+
+    if (canCache && cacheKey) {
+      try {
+        const cachedData = await redis?.get(cacheKey);
+        if (cachedData) {
+          console.log(`Cache HIT for key: ${cacheKey}`);
+          return NextResponse.json(JSON.parse(cachedData));
+        }
+        console.log(`Cache MISS for key: ${cacheKey}`);
+      } catch (cacheError) {
+        console.error(`Redis GET error for key ${cacheKey}:`, cacheError);
+        // Proceed to fetch from DB if cache read fails
+      }
+    }
+
     const skip = (page - 1) * limit;
 
     // Get userId from header if available (set by middleware)
@@ -173,13 +195,25 @@ export async function GET(request: NextRequest) {
     // Calculate pagination information
     const totalPages = Math.ceil(totalPosts / limit);
 
-    return NextResponse.json({
+    const responsePayload = {
       posts: transformedPosts,
       page,
       limit,
       totalPages,
       totalPosts,
-    });
+    };
+
+    if (canCache && cacheKey) {
+      try {
+        await redis?.set(cacheKey, JSON.stringify(responsePayload), 'EX', CACHE_TTL_SECONDS);
+        console.log(`Cache SET for key: ${cacheKey}`);
+      } catch (cacheError) {
+        console.error(`Redis SET error for key ${cacheKey}:`, cacheError);
+        // If cache write fails, we still return the data from DB
+      }
+    }
+
+    return NextResponse.json(responsePayload);
   } catch (error) {
     console.error('Error fetching posts:', error);
     return NextResponse.json(
@@ -223,6 +257,36 @@ export async function POST(request: NextRequest) {
         },
       },
     });
+
+    // Invalidate relevant caches when a new post is created
+    if (redis) {
+      const cacheKeysToInvalidate = [
+        `posts:new:page:1:limit:30`, // Assuming default limit is 30
+        // Add other relevant keys, e.g., if the new post immediately affects 'top' or 'best' (though less likely for a brand new post)
+      ];
+      // More sophisticated: could also try to update the cache if it's simple enough, but invalidation is safer.
+      // Consider also invalidating for different limit parameters if you cache those.
+      // For now, we only cache page 1 with the default limit for new/top/best.
+      // So, if limit changes, it won't hit this specific cache key anyway.
+
+      // It might be safer to invalidate all primary list caches for simplicity in a take-home:
+      // const cacheKeysToInvalidate = [
+      //  `posts:new:page:1:limit:30`,
+      //  `posts:top:page:1:limit:30`,
+      //  `posts:best:page:1:limit:30`,
+      // ];
+      // This depends on how much precision you need vs. simplicity.
+      // For a take-home, clearing the `new` posts first page is a good start.
+
+      try {
+        for (const key of cacheKeysToInvalidate) {
+          await redis.del(key);
+          console.log(`Cache INVALIDATED for key: ${key} due to new post`);
+        }
+      } catch (cacheError) {
+        console.error('Redis DEL error during post creation:', cacheError);
+      }
+    }
     
     return NextResponse.json(post, { status: 201 });
   } catch (error) {
