@@ -1,11 +1,7 @@
 {
     # Global options block
-    # acme_dns # If you use a DNS provider for ACME challenges (e.g. Cloudflare, Route53)
-    # For example, for Cloudflare: acme_dns cloudflare {env.CLOUDFLARE_API_TOKEN}
-    # Ensure you set CLOUDFLARE_API_TOKEN as an environment variable in docker-compose.yml for Caddy if you use this.
-
+    acme_dns cloudflare {env.CLOUDFLARE_API_TOKEN}
     # Email for ACME (SSL certificate) registration and recovery
-    # It's good practice to set this.
     email spam@sahil-shubham.in
 }
 
@@ -18,6 +14,11 @@ spc.sahil-shubham.in {
     log {
         output stdout
         format console
+    }
+
+    # Use Cloudflare DNS challenge for SSL
+    tls {
+        dns cloudflare {env.CLOUDFLARE_API_TOKEN}
     }
 
     # Reverse proxy requests to your Next.js app service
