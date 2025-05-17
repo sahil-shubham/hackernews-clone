@@ -108,25 +108,25 @@ export async function POST(
     });
 
     // Invalidate caches if a vote operation was performed and Redis is available
-    if (operationPerformed && redis) {
-      const defaultLimit = 30; // Assuming this is the common limit for cached lists
-      const cacheKeysToInvalidate = [
-        `posts:top:page:1:limit:${defaultLimit}`,
-        `posts:best:page:1:limit:${defaultLimit}`,
-        // Potentially invalidate the individual post cache if you implement it
-        // `post:${postId}` 
-      ];
+    // if (operationPerformed && redis) {
+    //   const defaultLimit = 30; // Assuming this is the common limit for cached lists
+    //   const cacheKeysToInvalidate = [
+    //     `posts:top:page:1:limit:${defaultLimit}`,
+    //     `posts:best:page:1:limit:${defaultLimit}`,
+    //     // Potentially invalidate the individual post cache if you implement it
+    //     // `post:${postId}` 
+    //   ];
 
-      try {
-        for (const key of cacheKeysToInvalidate) {
-          await redis.del(key);
-          console.log(`Cache INVALIDATED for key: ${key} due to vote on post ${postId}`);
-        }
-      } catch (cacheError) {
-        console.error(`Redis DEL error during vote processing for post ${postId}:`, cacheError);
-        // Continue even if cache invalidation fails
-      }
-    }
+    //   try {
+    //     for (const key of cacheKeysToInvalidate) {
+    //       await redis.del(key);
+    //       console.log(`Cache INVALIDATED for key: ${key} due to vote on post ${postId}`);
+    //     }
+    //   } catch (cacheError) {
+    //     console.error(`Redis DEL error during vote processing for post ${postId}:`, cacheError);
+    //     // Continue even if cache invalidation fails
+    //   }
+    // }
     
     return NextResponse.json({ 
       message,

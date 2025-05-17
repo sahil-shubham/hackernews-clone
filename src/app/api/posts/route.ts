@@ -77,22 +77,22 @@ export async function GET(request: NextRequest) {
     const { page, limit, sort, search } = parsed.data;
 
     // Only cache the first page for the specified sort orders
-    const canCache = page === 1 && ['new', 'top', 'best'].includes(sort) && redis;
-    const cacheKey = canCache ? `posts:${sort}:page:1:limit:${limit}` : null;
+    // const canCache = page === 1 && ['new', 'top', 'best'].includes(sort) && redis;
+    // const cacheKey = canCache ? `posts:${sort}:page:1:limit:${limit}` : null;
 
-    if (canCache && cacheKey) {
-      try {
-        const cachedData = await redis?.get(cacheKey);
-        if (cachedData) {
-          console.log(`Cache HIT for key: ${cacheKey}`);
-          return NextResponse.json(JSON.parse(cachedData));
-        }
-        console.log(`Cache MISS for key: ${cacheKey}`);
-      } catch (cacheError) {
-        console.error(`Redis GET error for key ${cacheKey}:`, cacheError);
-        // Proceed to fetch from DB if cache read fails
-      }
-    }
+    // if (canCache && cacheKey) {
+    //   try {
+    //     const cachedData = await redis?.get(cacheKey);
+    //     if (cachedData) {
+    //       console.log(`Cache HIT for key: ${cacheKey}`);
+    //       return NextResponse.json(JSON.parse(cachedData));
+    //     }
+    //     console.log(`Cache MISS for key: ${cacheKey}`);
+    //   } catch (cacheError) {
+    //     console.error(`Redis GET error for key ${cacheKey}:`, cacheError);
+    //     // Proceed to fetch from DB if cache read fails
+    //   }
+    // }
 
     const skip = (page - 1) * limit;
 
@@ -203,15 +203,15 @@ export async function GET(request: NextRequest) {
       totalPosts,
     };
 
-    if (canCache && cacheKey) {
-      try {
-        await redis?.set(cacheKey, JSON.stringify(responsePayload), 'EX', CACHE_TTL_SECONDS);
-        console.log(`Cache SET for key: ${cacheKey}`);
-      } catch (cacheError) {
-        console.error(`Redis SET error for key ${cacheKey}:`, cacheError);
-        // If cache write fails, we still return the data from DB
-      }
-    }
+    // if (canCache && cacheKey) {
+    //   try {
+    //     await redis?.set(cacheKey, JSON.stringify(responsePayload), 'EX', CACHE_TTL_SECONDS);
+    //     console.log(`Cache SET for key: ${cacheKey}`);
+    //   } catch (cacheError) {
+    //     console.error(`Redis SET error for key ${cacheKey}:`, cacheError);
+    //     // If cache write fails, we still return the data from DB
+    //   }
+    // }
 
     return NextResponse.json(responsePayload);
   } catch (error) {
