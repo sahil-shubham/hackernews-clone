@@ -5,12 +5,13 @@ import { fakerEN } from '@faker-js/faker';
 const prisma = new PrismaClient();
 
 // Configuration
-const USERS_COUNT = Number(process.env.USERS_COUNT) || 500;
+const USERS_COUNT = Number(process.env.USERS_COUNT) || 100;
 const POSTS_PER_USER = Number(process.env.POSTS_PER_USER) || 10;
-const COMMENTS_PER_POST = Number(process.env.COMMENTS_PER_POST) || 15;
+const COMMENTS_PER_POST = Number(process.env.COMMENTS_PER_POST) || 5;
 const MAX_REPLIES_PER_COMMENT = Number(process.env.MAX_REPLIES_PER_COMMENT) || 5;
-const VOTES_PER_POST_TARGET = Number(process.env.VOTES_PER_POST_TARGET) || 250;
+const VOTES_PER_POST_TARGET = Number(process.env.VOTES_PER_POST_TARGET) || 50;
 const SEED_MODE = process.env.SEED_MODE;
+const BATCH_SIZE = Number(process.env.BATCH_SIZE) || 500; // New: Batch size for createMany operations
 
 // Sanitize URLs to ensure they have https:// prefix
 const sanitizeUrl = (url: string): string => {
@@ -46,6 +47,7 @@ const generatePostTitle = (): string => {
 
 async function main() {
   console.log(`Starting seed in ${SEED_MODE} mode...`);
+  console.log(`Using BATCH_SIZE: ${BATCH_SIZE}`);
   
   // Clean database if in development mode
   if (SEED_MODE === 'development') {
@@ -64,20 +66,24 @@ async function main() {
     try {
       // Using $executeRawUnsafe because table names are part of a joined string.
       // Ensure tableNames are controlled and not from user input in other contexts.
+      console.time('TruncateOperation');
       await prisma.$executeRawUnsafe(`TRUNCATE TABLE "${tableNames.join('", "')}" RESTART IDENTITY CASCADE;`);
+      console.timeEnd('TruncateOperation');
       console.log('Database cleaned successfully using TRUNCATE.');
     } catch (error) {
       console.error('Error during TRUNCATE operation:', error);
       console.warn('Falling back to deleteMany operations...');
       // Fallback to deleteMany if TRUNCATE fails (e.g., permissions)
       // This is the original slower method
+      console.time('DeleteManyFallback');
       const deleted = await prisma.$transaction([
         prisma.notification.deleteMany(),
         prisma.vote.deleteMany(),
-        prisma.comment.deleteMany(), 
+        prisma.comment.deleteMany(),
         prisma.post.deleteMany(),
         prisma.user.deleteMany()
       ]);
+      console.timeEnd('DeleteManyFallback');
       console.log('Database cleaned successfully using deleteMany:');
       console.log(`Deleted ${deleted[0].count} notifications`);
       console.log(`Deleted ${deleted[1].count} votes`);
@@ -91,6 +97,7 @@ async function main() {
   
   // Create regular users
   console.log(`Preparing ${USERS_COUNT} regular users...`);
+  console.time('UserCreation');
   const regularUsersDataForCreateMany: Prisma.UserCreateManyInput[] = [];
   for (let i = 0; i < USERS_COUNT; i++) {
     const firstName = fakerEN.person.firstName();
@@ -102,15 +109,23 @@ async function main() {
     });
   }
   if (regularUsersDataForCreateMany.length > 0) {
-    await prisma.user.createMany({
-      data: regularUsersDataForCreateMany,
-      skipDuplicates: true,
-    });
+    for (let i = 0; i < regularUsersDataForCreateMany.length; i += BATCH_SIZE) {
+      const batch = regularUsersDataForCreateMany.slice(i, i + BATCH_SIZE);
+      await prisma.user.createMany({
+        data: batch,
+        skipDuplicates: true,
+      });
+      process.stdout.write(`\rCreating users: ${i + batch.length}/${regularUsersDataForCreateMany.length} processed... `);
+    }
+    process.stdout.write(`\rCreating users: ${regularUsersDataForCreateMany.length}/${regularUsersDataForCreateMany.length} processed... Done.\n`);
   }
-  console.log(`${regularUsersDataForCreateMany.length} regular users created.`);
+  console.timeEnd('UserCreation');
+  console.log(`${regularUsersDataForCreateMany.length} regular users creation process finished.`);
 
   // Fetch all users to get their IDs
+  console.time('FetchAllUsers');
   const allUsers = await prisma.user.findMany({ select: { id: true } });
+  console.timeEnd('FetchAllUsers');
   if (allUsers.length === 0) {
     console.log("No users found, exiting seed.");
     return;
@@ -118,6 +133,7 @@ async function main() {
   
   // Create posts
   console.log(`Preparing posts...`);
+  console.time('PostCreation');
   const postsData: Prisma.PostCreateManyInput[] = [];
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -137,12 +153,20 @@ async function main() {
     }
   }
   if (postsData.length > 0) {
-    await prisma.post.createMany({ data: postsData });
+    for (let i = 0; i < postsData.length; i += BATCH_SIZE) {
+      const batch = postsData.slice(i, i + BATCH_SIZE);
+      await prisma.post.createMany({ data: batch });
+      process.stdout.write(`\rCreating posts: ${i + batch.length}/${postsData.length} processed... `);
+    }
+    process.stdout.write(`\rCreating posts: ${postsData.length}/${postsData.length} processed... Done.\n`);
   }
-  console.log(`${postsData.length} posts created.`);
+  console.timeEnd('PostCreation');
+  console.log(`${postsData.length} posts creation process finished.`);
 
   // Fetch all posts to get their IDs
+  console.time('FetchAllPosts');
   const allPosts = await prisma.post.findMany({ select: { id: true, createdAt: true } });
+  console.timeEnd('FetchAllPosts');
   if (allPosts.length === 0) {
     console.log("No posts found, exiting seed for comments/votes.");
     return;
@@ -150,11 +174,13 @@ async function main() {
   
   // Create comments and votes
   console.log(`Preparing comments...`);
+  console.time('TopLevelCommentCreation');
   const commentsData: Prisma.CommentCreateManyInput[] = [];
   
   for (const post of allPosts) {
     const postCreatedAt = new Date(post.createdAt);
-    for (let i = 0; i < COMMENTS_PER_POST; i++) {
+    const numCommentsForThisPost = fakerEN.number.int({ min: 0, max: COMMENTS_PER_POST });
+    for (let i = 0; i < numCommentsForThisPost; i++) {
       const author = fakerEN.helpers.arrayElement(allUsers);
       const commentCreatedAt = fakerEN.date.soon({ days: 5, refDate: postCreatedAt });
       commentsData.push({
@@ -167,19 +193,28 @@ async function main() {
   }
 
   if (commentsData.length > 0) {
-    await prisma.comment.createMany({ data: commentsData });
+    for (let i = 0; i < commentsData.length; i += BATCH_SIZE) {
+      const batch = commentsData.slice(i, i + BATCH_SIZE);
+      await prisma.comment.createMany({ data: batch });
+      process.stdout.write(`\rCreating top-level comments: ${i + batch.length}/${commentsData.length} processed... `);
+    }
+    process.stdout.write(`\rCreating top-level comments: ${commentsData.length}/${commentsData.length} processed... Done.\n`);
   }
+  console.timeEnd('TopLevelCommentCreation');
   console.log(`${commentsData.length} top-level comments prepared for creation.`);
 
   // Fetch top-level comments for replies
+  console.time('FetchTopLevelComments');
   const topLevelComments = await prisma.comment.findMany({
     where: { parentId: null },
     select: { id: true, createdAt: true, postId: true },
   });
+  console.timeEnd('FetchTopLevelComments');
 
+  console.time('ReplyCreation');
   const repliesData: Prisma.CommentCreateManyInput[] = [];
   for (const parentComment of topLevelComments) {
-    if (Math.random() > 0.5) {
+    if (Math.random() > 0.7) {
       const replyCount = fakerEN.number.int({ min: 1, max: MAX_REPLIES_PER_COMMENT });
       const parentCommentCreatedAt = new Date(parentComment.createdAt);
       for (let j = 0; j < replyCount; j++) {
@@ -195,12 +230,20 @@ async function main() {
     }
   }
   if (repliesData.length > 0) {
-    await prisma.comment.createMany({ data: repliesData });
-    console.log(`${repliesData.length} replies created.`);
+    for (let i = 0; i < repliesData.length; i += BATCH_SIZE) {
+      const batch = repliesData.slice(i, i + BATCH_SIZE);
+      await prisma.comment.createMany({ data: batch });
+      process.stdout.write(`\rCreating replies: ${i + batch.length}/${repliesData.length} processed... `);
+    }
+    process.stdout.write(`\rCreating replies: ${repliesData.length}/${repliesData.length} processed... Done.\n`);
+  } else {
+    process.stdout.write("\rCreating replies: 0/0 processed... Done.\n");
   }
+  console.timeEnd('ReplyCreation');
 
   // --- Notification Seeding Logic ---
   console.log('Preparing notifications based on seeded comments...');
+  console.time('FetchAllSeededCommentsForNotifications');
   const allSeededComments = await prisma.comment.findMany({
     include: {
       post: { select: { authorId: true, id: true } },     // Get post author
@@ -208,7 +251,9 @@ async function main() {
       // authorId is already on comment, no need to include author object just for id
     },
   });
+  console.timeEnd('FetchAllSeededCommentsForNotifications');
 
+  console.time('NotificationCreation');
   const notificationsToCreate: Prisma.NotificationCreateManyInput[] = [];
   const thirtyDaysAgoForNotifs = new Date(); // For notification createdAt
   thirtyDaysAgoForNotifs.setDate(thirtyDaysAgoForNotifs.getDate() - 30);
@@ -249,16 +294,24 @@ async function main() {
   }
 
   if (notificationsToCreate.length > 0) {
-    await prisma.notification.createMany({
-      data: notificationsToCreate,
-      skipDuplicates: true, 
-    });
-    console.log(`${notificationsToCreate.length} notifications created.`);
+    for (let i = 0; i < notificationsToCreate.length; i += BATCH_SIZE) {
+      const batch = notificationsToCreate.slice(i, i + BATCH_SIZE);
+      await prisma.notification.createMany({
+        data: batch,
+        skipDuplicates: true,
+      });
+      process.stdout.write(`\rCreating notifications: ${i + batch.length}/${notificationsToCreate.length} processed... `);
+    }
+    process.stdout.write(`\rCreating notifications: ${notificationsToCreate.length}/${notificationsToCreate.length} processed... Done.\n`);
+  } else {
+    process.stdout.write("\rCreating notifications: 0/0 processed... Done.\n");
   }
+  console.timeEnd('NotificationCreation');
   // --- End Notification Seeding Logic ---
 
   // 5. Batch Create Votes
   console.log(`Preparing votes...`);
+  console.time('VoteCreation');
   const votesData: Prisma.VoteCreateManyInput[] = [];
   const voteUserPostPairs = new Set<string>();
 
@@ -283,13 +336,19 @@ async function main() {
   }
   
   if (votesData.length > 0) {
-    await prisma.vote.createMany({
-      data: votesData,
-      skipDuplicates: true,
-    });
+    for (let i = 0; i < votesData.length; i += BATCH_SIZE) {
+      const batch = votesData.slice(i, i + BATCH_SIZE);
+      await prisma.vote.createMany({
+        data: batch,
+        skipDuplicates: true,
+      });
+      process.stdout.write(`\rCreating votes: ${i + batch.length}/${votesData.length} processed... `);
+    }
+    process.stdout.write(`\rCreating votes: ${votesData.length}/${votesData.length} processed... Done.\n`);
+  } else {
+    process.stdout.write("\rCreating votes: 0/0 processed... Done.\n");
   }
-  console.log(`${votesData.length} votes created.`);
-
+  console.timeEnd('VoteCreation');
   console.log('Seed completed successfully!');
 }
 
