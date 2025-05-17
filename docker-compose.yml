@@ -34,7 +34,7 @@ services:
       - JWT_SECRET=${JWT_SECRET}
 
   caddy:
-    image: caddy:latest
+    image: caddybuilds/caddy-cloudflare:latest
     restart: always
     ports:
       - "80:80"
@@ -44,6 +44,8 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data
       - caddy_config:/config
+    environment:
+      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
     depends_on:
       - app
 
