@@ -82,7 +82,7 @@ const HeaderComponent = () => {
   // text-primary-foreground for text on primary background
 
   return (
-    <header className="bg-primary text-primary-foreground shadow-md">
+    <header className="bg-primary text-primary-foreground">
       <div className="container mx-auto px-4 max-w-5xl flex items-center justify-between h-14">
         {' '}
         {/* V0 uses max-w-5xl. Original HeaderContent was 1280px (~max-w-7xl) */}
