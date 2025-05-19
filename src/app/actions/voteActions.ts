@@ -169,7 +169,6 @@ export async function voteOnComment(
         data: {
           userId,
           commentId,
-          postId, // Include postId if your Vote model for comments requires it for relation or filtering
           voteType,
         },
       });
