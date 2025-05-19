@@ -132,7 +132,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
             query={searchResultsData.query}
           />
         )}
-        {query && query.trim() && (
+        {!query && (
            <p className="text-center text-muted-foreground py-8">Enter a search term to begin.</p>
         )}
       </Suspense>
