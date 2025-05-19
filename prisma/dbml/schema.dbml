@@ -14,6 +14,7 @@ Table users {
   votes votes [not null]
   notifications notifications [not null]
   triggeredNotifications notifications [not null]
+  bookmarks bookmarks [not null]
 }
 
 Table posts {
@@ -29,6 +30,7 @@ Table posts {
   comments comments [not null]
   votes votes [not null]
   notifications notifications [not null]
+  bookmarks bookmarks [not null]
 }
 
 Table comments {
@@ -80,6 +82,20 @@ Table notifications {
   comment comments
 }
 
+Table bookmarks {
+  id String [pk]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  userId String [not null]
+  user users [not null]
+  postId String [not null]
+  post posts [not null]
+
+  indexes {
+    (userId, postId) [unique]
+  }
+}
+
 Enum PostType {
   LINK
   TEXT
@@ -116,3 +132,7 @@ Ref: notifications.triggeringUserId > users.id [delete: Cascade]
 Ref: notifications.postId > posts.id [delete: Cascade]
 
 Ref: notifications.commentId > comments.id [delete: Cascade]
+
+Ref: bookmarks.userId > users.id [delete: Cascade]
+
+Ref: bookmarks.postId > posts.id [delete: Cascade]

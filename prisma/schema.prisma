@@ -4,7 +4,7 @@
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["fullTextSearchPostgres"]
-  binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+  binaryTargets   = ["native", "linux-musl-arm64-openssl-3.0.x"]
 }
 
 generator dbml {
@@ -12,8 +12,8 @@ generator dbml {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
@@ -31,6 +31,7 @@ model User {
   votes                  Vote[]
   notifications          Notification[] @relation("UserNotifications")
   triggeredNotifications Notification[] @relation("TriggeredNotifications")
+  bookmarks              Bookmark[]
 
   @@map("users")
 }
@@ -50,6 +51,7 @@ model Post {
   comments      Comment[]
   votes         Vote[]
   notifications Notification[]
+  bookmarks     Bookmark[]
 
   @@index([authorId])
   @@index([createdAt])
@@ -124,6 +126,23 @@ model Notification {
 
   @@index([recipientId, read, createdAt]) // For efficient querying of user's unread notifications
   @@map("notifications")
+}
+
+model Bookmark {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId]) // A user can only bookmark a post once
+  @@index([userId])
+  @@index([postId])
+  @@map("bookmarks")
 }
 
 enum PostType {
