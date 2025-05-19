@@ -89,14 +89,16 @@ async function fetchPostComments(postId: string, userToken: string | null): Prom
 }
 
 interface PostDetailPageProps {
-  params: {
-    postId: string
-  }
+  params: Promise<{ postId: string } | undefined>;
 }
 
-export default async function PostDetailPage({ params }: PostDetailPageProps) {
-  const { postId } = params
-  const currentUser = await getServerSideUser()
+export default async function PostDetailPage({ params: paramsPromise }: PostDetailPageProps) {
+  const params = await paramsPromise;
+  if (!params) {
+    notFound();
+  }
+  const { postId } = params;
+  const currentUser = await getServerSideUser();
 
   // Fetch data in parallel
   const [postResult, commentsResult] = await Promise.allSettled([

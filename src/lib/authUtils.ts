@@ -7,7 +7,7 @@ import type { User } from '@/hooks/useAuthStore';
 const AUTH_TOKEN_COOKIE_NAME = 'auth-token';
 
 export async function getServerSideUser(): Promise<User | null> {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const tokenCookie = cookieStore.get(AUTH_TOKEN_COOKIE_NAME);
 
   if (tokenCookie?.value) {
@@ -41,8 +41,8 @@ export async function getServerSideUser(): Promise<User | null> {
  * Utility function to set the auth token cookie.
  * To be used in API routes like login/signup.
  */
-export function setAuthCookie(token: string, maxAgeSeconds: number = 60 * 60 * 24 * 7 /* 7 days */) {
-  const cookieStore = cookies();
+export async function setAuthCookie(token: string, maxAgeSeconds: number = 60 * 60 * 24 * 7 /* 7 days */) {
+  const cookieStore = await cookies();
   cookieStore.set(AUTH_TOKEN_COOKIE_NAME, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
@@ -56,7 +56,7 @@ export function setAuthCookie(token: string, maxAgeSeconds: number = 60 * 60 * 2
  * Utility function to clear the auth token cookie.
  * To be used in API routes like logout.
  */
-export function clearAuthCookie() {
-  const cookieStore = cookies();
+export async function clearAuthCookie() {
+  const cookieStore = await cookies();
   cookieStore.delete(AUTH_TOKEN_COOKIE_NAME);
 }

@@ -5,10 +5,12 @@ import CommentItem from './CommentItem';
 import type { Comment as CommentType } from '@/types/comment';
 import { Heading as UiHeading } from '@/components/ui/typography';
 import { Text } from '@/components/ui/typography';
+import type { User } from '@/hooks/useAuthStore';
 
 interface CommentListProps {
   comments: CommentType[];
   postId: string;
+  currentUser: User | null;
   loading?: boolean;
   onVote?: (commentId: string, voteType: 'UPVOTE' | 'DOWNVOTE') => Promise<void>;
   onReply?: (parentId: string, text: string, postId: string) => Promise<void>;
@@ -25,6 +27,7 @@ const LoadingCommentSkeleton = () => (
 export default function CommentList({ 
   comments, 
   postId,
+  currentUser,
   loading = false, 
   onVote, 
   onReply 
@@ -32,7 +35,7 @@ export default function CommentList({
   if (loading) {
     return (
       <div className="py-4">
-        <div className="mb-4">
+        <div className="mb-6">
           <div className="h-5 bg-muted rounded w-1/3 animate-pulse"></div>
         </div>
         <div>
@@ -62,6 +65,7 @@ export default function CommentList({
               key={comment.id}
               comment={comment}
               postId={postId}
+              currentUser={currentUser}
               onVote={onVote}
               onReply={onReply}
             />

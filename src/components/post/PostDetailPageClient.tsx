@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuthStore, type User } from '@/hooks/useAuthStore';
 import CommentForm from '@/components/comment/CommentForm';
-import CommentItem from '@/components/comment/CommentItem'; // Assuming this will be refactored to Tailwind
+import CommentList from '@/components/comment/CommentList';
 import { PageContainer, FlexContainer } from '@/components/ui/layout';
 import { Heading, Text, ErrorText } from '@/components/ui/typography';
 import { Button } from '@/components/ui/Button'; // Assuming Button is needed
@@ -33,6 +33,7 @@ export default function PostDetailPageClient({
 
   const [post, setPost] = useState<PostType | null>(initialPost);
   const [comments, setComments] = useState<CommentType[]>(initialComments);
+  const [commentsLoading, setCommentsLoading] = useState(false); // Added loading state for comments section
   // Error/loading state for client-side actions like submitting comment can be local here
   const [actionError, setActionError] = useState<string | null>(null);
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
@@ -117,9 +118,16 @@ export default function PostDetailPageClient({
         const errorData = await response.json().catch(() => ({ message: 'Failed to post comment' }));
         throw new Error(errorData.message);
       }
-      const newComment = await response.json();
+      const newCommentData = await response.json();
       // Add comment to local state (optimistic update or based on response)
-      setComments(prevComments => [...prevComments, newComment.comment]); // Assuming API returns { comment: ... }
+      setComments(prevComments => [...prevComments, newCommentData.comment]); // Assuming API returns { comment: ... }
+      // Update post's comment count if available and relevant
+      if (post && newCommentData.commentCount !== undefined) {
+        setPost(prevPost => prevPost ? ({ ...prevPost, commentCount: newCommentData.commentCount }) : null);
+      } else if (post) {
+        setPost(prevPost => prevPost ? ({ ...prevPost, commentCount: (prevPost.commentCount || 0) + 1 }) : null);
+      }
+
     } catch (err: any) {
       setActionError(err.message || 'Failed to post comment.');
       console.error('Error adding comment:', err);
@@ -134,9 +142,9 @@ export default function PostDetailPageClient({
       setActionError('You must be logged in to reply.');
       return;
     }
-    setIsSubmittingComment(true); // Consider separate loading state for replies if needed
+    // Potentially use a different loading state for replies if actions can overlap
+    setIsSubmittingComment(true); 
     setActionError(null);
-    console.log(`Replying to comment ${parentId} with text: ${text}`);
     try {
       const response = await fetch(`/api/posts/${postId}/comments`, {
         method: 'POST',
@@ -150,8 +158,17 @@ export default function PostDetailPageClient({
         const errorData = await response.json().catch(() => ({ message: 'Failed to post reply' }));
         throw new Error(errorData.message);
       }
-      const newReply = await response.json();
-      setComments(prevComments => addReplyToCommentState(prevComments, parentId, newReply.comment));
+      const newReplyData = await response.json();
+      setComments(prevComments => addReplyToCommentState(prevComments, parentId, newReplyData.comment));
+      // Update post's comment count if available and relevant
+      if (post && newReplyData.commentCount !== undefined) {
+        setPost(prevPost => prevPost ? ({ ...prevPost, commentCount: newReplyData.commentCount }) : null);
+      } else if (post) {
+         // Incrementing might be tricky if API doesn't return full count, 
+         // but it's a reply, so main comment count on post might not change, or API handles it.
+         // For now, let's assume the API provides the correct total count or CommentList will show its own count.
+      }
+
     } catch (err: any) {
       setActionError(err.message || 'Failed to post reply.');
       console.error('Error adding reply:', err);
@@ -256,19 +273,14 @@ export default function PostDetailPageClient({
         {comments.length === 0 ? (
           <Text emphasis="low" className="text-center py-4">No comments yet. Be the first to comment!</Text>
         ) : (
-          <div className="space-y-6">
-            {comments.map((comment) => (
-              <CommentItem 
-                postId={postId} 
-                key={comment.id} 
-                comment={comment} 
-                onVote={handleCommentVote} 
-                onReply={handleCommentReply} 
-                currentUser={effectiveUser} // Pass current user for reply/vote enable/disable in CommentItem
-                // We'll need to ensure CommentItem is also refactored and can handle these props
-              />
-            ))}
-          </div>
+          <CommentList 
+            comments={comments}
+            postId={postId}
+            currentUser={effectiveUser} // Pass currentUser
+            loading={commentsLoading} // Pass a loading state if needed for comments section
+            onVote={handleCommentVote}
+            onReply={handleCommentReply} 
+          />
         )}
       </section>
     </PageContainer>

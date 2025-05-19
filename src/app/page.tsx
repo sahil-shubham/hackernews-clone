@@ -61,14 +61,22 @@ async function fetchPostsData(page: number, sort: string, searchQuery: string, u
 }
 
 interface PageProps {
-  searchParams?: { page?: string; sort?: string; search?: string; };
+  // searchParams is now a Promise that resolves to the search parameters object
+  searchParams: Promise<{ [key: string]: string | string[] | undefined } | undefined>;
 }
 
 // This is the main Server Component for the page
-export default async function Page({ searchParams }: PageProps) {
-  const page = Number(searchParams?.page || '1');
-  const sort = searchParams?.sort || 'new';
-  const searchQuery = searchParams?.search || '';
+export default async function Page({ searchParams: searchParamsPromise }: PageProps) {
+  const searchParams = await searchParamsPromise;
+
+  // Handle single or array values for params, taking the first if it's an array
+  const pageParam = searchParams?.page;
+  const sortParam = searchParams?.sort;
+  const searchParam = searchParams?.search;
+
+  const page = Number((Array.isArray(pageParam) ? pageParam[0] : pageParam) || '1');
+  const sort = (Array.isArray(sortParam) ? sortParam[0] : sortParam) || 'new';
+  const searchQuery = (Array.isArray(searchParam) ? searchParam[0] : searchParam) || '';
 
   const initialUser = await getServerSideUser(); // Uses the imported version
 
