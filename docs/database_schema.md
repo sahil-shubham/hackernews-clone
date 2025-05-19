@@ -1,6 +1,6 @@
 # Database Schema Details (Prisma)
 
-This document provides a detailed explanation of the database schema for the Hackernews Clone, managed by Prisma and defined in `prisma/schema.prisma`. Understanding the data models, their relationships, and indexing strategies is crucial for comprehending the application's data flow and performance characteristics.
+This document provides a detailed explanation of the database schema for the Hackernews Clone, managed by Prisma and defined in `prisma/schema.prisma`.
 
 ## DBML Diagram
 
@@ -14,12 +14,12 @@ Below is a visual representation of the database schema using Database Markup La
 
 The `prisma/schema.prisma` file is the single source of truth for the database structure. It includes:
 
-*   **Generators:** Configuration for Prisma Client and other tools (like `prisma-dbml-generator`).
+*   **Generators:** Configuration for Prisma Client and tools like `prisma-dbml-generator`.
 *   **Datasource:** Specifies the database connection (PostgreSQL in this case).
-*   **Models:** Define the tables in your database, their columns (fields), and types.
-*   **Relations:** Define how models are connected to each other (e.g., one-to-many, many-to-many).
-*   **Enums:** Define sets of allowed values for certain fields.
-*   **Indexes (`@@index`, `@@unique`):** Define database indexes to optimize query performance.
+*   **Models:** Describes each table in the database, the columns and its corresponding type
+*   **Relations:** Describes relationships between models, and the type (one-to-one, one-to-many, many-to-many).
+*   **Enums:** Define sets of allowed values for certain fields
+*   **Indexes (`@@index`, `@@unique`):** Describes DB indexes and unique constraints, to optimize certain queries
 
 ### Models and Relationships
 

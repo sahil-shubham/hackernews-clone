@@ -2,8 +2,6 @@
 
 Welcome to the detailed documentation for the Hackernews Clone project. This project is a full-stack application built with Next.js, Prisma, PostgreSQL, and other modern web technologies.
 
-This documentation is intended to provide a comprehensive understanding of the project's architecture, setup, features, and technical decisions. Whether you are a contributor, reviewer, or just curious, this guide should help you navigate the codebase and understand its intricacies.
-
 ## Table of Contents
 
 - [Repository Structure](#repository-structure)
@@ -12,7 +10,6 @@ This documentation is intended to provide a comprehensive understanding of the p
 - [API Documentation](./api_documentation.md)
 - [Deployment and CI/CD](./deployment_and_cicd.md)
 - [Retrospective (Design Choices & AI Usage)](./retrospective.md)
-- [Future Improvements](./future_improvements.md)
 
 ## Repository Structure
 
@@ -38,6 +35,7 @@ Understanding the layout of the repository is key to navigating the project. Her
 ├── scripts/
 │   ├── seed.ts               # Script for seeding the database with initial data
 │   ├── fetch_hackernews.ts   # Script for fetching data from the official Hacker News API
+│   ├── generate-types.ts     # Script for generate types from Zod, run using the `yarn generate-types` command
 ├── src/
 │   ├── app/                  # Next.js App Router directory
 │   │   ├── (page routes)     # Page components and layouts

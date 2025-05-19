@@ -10,7 +10,6 @@ This specification details the available endpoints, request parameters, response
 
 *   **OpenAPI Specification File:** You can find the detailed OpenAPI v3.x schema in the root of the repository: [**`openapi.yaml`**](../openapi.yaml)
 
-This `openapi.yaml` file can be used with various tools to visualize the API (like Swagger UI, ReDoc) or to generate client SDKs.
 
 ## Server Actions
 

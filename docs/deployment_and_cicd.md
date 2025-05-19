@@ -12,7 +12,7 @@ The `Dockerfile` located in the project root defines the multi-stage build proce
 
 ### `docker-compose.yml`
 
-The `docker-compose.yml` file orchestrates a multi-container environment, ideal for local development that mirrors a production setup and can also be adapted for some production deployments.
+The `docker-compose.yml` file orchestrates a multi-container environment, including DB dependencies. This mirrors the local setup. 
 
 It defines the following services:
 
