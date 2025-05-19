@@ -1,31 +1,7 @@
 import { Suspense } from 'react';
-// import { cookies } from 'next/headers'; // No longer needed here directly
 import HomePageClient from '@/components/HomePageClient';
-import type { Post } from '@/types/post'; // Ensure Post type is available
-// import type { User } from '@/hooks/useAuthStore'; // User type will come via getServerSideUser
-import { getServerSideUser } from '@/lib/authUtils'; // Import the new utility
-
-// // Helper function to get user from cookies (replace with your actual auth logic)
-// async function getServerSideUser(): Promise<User | null> { // REMOVE THIS LOCAL DEFINITION
-//   const cookieStore = await cookies(); 
-//   const tokenCookie = cookieStore.get('authToken');
-// 
-//   if (tokenCookie?.value) {
-//     try {
-//       // SIMULATED: Replace with actual token verification and user data retrieval
-//       return {
-//         id: 'server-user-id',
-//         username: 'ServerUser',
-//         email: 'server@example.com',
-//         token: tokenCookie.value,
-//       };
-//     } catch (error) {
-//       console.error("Error processing token:", error);
-//       return null;
-//     }
-//   }
-//   return null;
-// }
+import type { Post } from '@/types/post';
+import { getServerSideUser } from '@/lib/authUtils';
 
 async function fetchPostsData(page: number, sort: string, searchQuery: string, userToken: string | null) {
   const queryParams = new URLSearchParams({
@@ -38,8 +14,7 @@ async function fetchPostsData(page: number, sort: string, searchQuery: string, u
   const headers: HeadersInit = {};
   if (userToken) headers.Authorization = `Bearer ${userToken}`;
   
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000'; 
-  const fetchUrl = `${apiBaseUrl}/api/posts?${queryParams.toString()}`;
+  const fetchUrl = `/api/posts?${queryParams.toString()}`;
 
   try {
     const response = await fetch(fetchUrl, { headers, cache: 'no-store' });

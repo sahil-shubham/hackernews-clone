@@ -32,7 +32,6 @@ const LoadingSkeleton = () => (
 )
 
 async function fetchPostDetails(postId: string, userToken: string | null): Promise<PostType | null> {
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000'
   const headers: HeadersInit = {}
   // The middleware handles cookie-based auth for API routes,
   // but if calling an external API that needs a Bearer token, it would be added here.
@@ -48,7 +47,7 @@ async function fetchPostDetails(postId: string, userToken: string | null): Promi
   // Let's assume for now the API route can get user context if needed via middleware + x-user-id.
 
   try {
-    const response = await fetch(`${apiBaseUrl}/api/posts/${postId}`, { 
+    const response = await fetch(`/api/posts/${postId}`, { 
       headers, 
       cache: 'no-store' // Or specific caching strategy
     })
@@ -66,12 +65,11 @@ async function fetchPostDetails(postId: string, userToken: string | null): Promi
 }
 
 async function fetchPostComments(postId: string, userToken: string | null): Promise<CommentType[]> {
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000'
   const headers: HeadersInit = {}
   // Similar consideration for headers as in fetchPostDetails
 
   try {
-    const response = await fetch(`${apiBaseUrl}/api/posts/${postId}/comments`, { 
+    const response = await fetch(`/api/posts/${postId}/comments`, { 
       headers, 
       cache: 'no-store' // Or specific caching strategy
     })
