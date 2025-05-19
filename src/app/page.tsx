@@ -5,6 +5,8 @@ import { getServerSideUser } from '@/lib/authUtils';
 import { prisma } from '@/lib/prisma'; // Import Prisma client
 import type { VoteType as PrismaVoteType, PostType as PrismaPostType } from '@prisma/client'; // Import Prisma types
 
+export const revalidate = 60; // Revalidate this page at most every 60 seconds
+
 async function fetchPostsData(
   page: number,
   sort: string,

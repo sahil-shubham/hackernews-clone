@@ -9,6 +9,8 @@ import type { Comment as CommentType } from '@/types/comment'
 import type { VoteType as PrismaVoteType } from '@prisma/client'
 import { PageContainer } from '@/components/ui/layout'
 
+export const revalidate = 60; // Revalidate this page at most every 60 seconds
+
 const LoadingSkeleton = () => (
   <PageContainer className="py-8">
     <div className="animate-pulse bg-card p-6 rounded-lg shadow border border-border">
