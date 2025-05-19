@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
+import { voteSchema } from '@/lib/schemas/vote';
 import { prisma } from '@/lib/prisma';
+// import redis from '@/lib/redis'; // Import the Redis client
 
-// Validate vote type input
-const voteSchema = z.object({
-  voteType: z.enum(['UPVOTE', 'DOWNVOTE']),
-});
 
 type Params = Promise<{ postId: string }>
 
@@ -50,6 +47,9 @@ export async function POST(
     
     const { voteType } = result.data;
     
+    let message = 'Vote recorded successfully';
+    let operationPerformed = false;
+
     // Check if user has already voted on this post
     const existingVote = await prisma.vote.findUnique({
       where: {
@@ -67,20 +67,11 @@ export async function POST(
           id: existingVote.id,
         },
       });
-      
-      // Count votes after deletion
-      const voteCount = await prisma.vote.count({
-        where: { postId },
-      });
-      
-      return NextResponse.json({ 
-        message: 'Vote removed successfully',
-        score: voteCount,
-      });
+      message = 'Vote removed successfully';
+      operationPerformed = true;
     }
-    
     // If vote exists but with different type, update it
-    if (existingVote) {
+    else if (existingVote) {
       await prisma.vote.update({
         where: {
           id: existingVote.id,
@@ -89,6 +80,7 @@ export async function POST(
           voteType,
         },
       });
+      operationPerformed = true;
     } 
     // Otherwise create a new vote
     else {
@@ -103,16 +95,38 @@ export async function POST(
           },
         },
       });
+      operationPerformed = true;
     }
     
     // Count votes after update/creation
     const voteCount = await prisma.vote.count({
-      where: { postId },
+      where: { postId }, // Only count votes for the current post to determine its score
     });
+
+    // Invalidate caches if a vote operation was performed and Redis is available
+    // if (operationPerformed && redis) {
+    //   const defaultLimit = 30; // Assuming this is the common limit for cached lists
+    //   const cacheKeysToInvalidate = [
+    //     `posts:top:page:1:limit:${defaultLimit}`,
+    //     `posts:best:page:1:limit:${defaultLimit}`,
+    //     // Potentially invalidate the individual post cache if you implement it
+    //     // `post:${postId}` 
+    //   ];
+
+    //   try {
+    //     for (const key of cacheKeysToInvalidate) {
+    //       await redis.del(key);
+    //       console.log(`Cache INVALIDATED for key: ${key} due to vote on post ${postId}`);
+    //     }
+    //   } catch (cacheError) {
+    //     console.error(`Redis DEL error during vote processing for post ${postId}:`, cacheError);
+    //     // Continue even if cache invalidation fails
+    //   }
+    // }
     
     return NextResponse.json({ 
-      message: 'Vote recorded successfully',
-      score: voteCount,
+      message,
+      score: voteCount, // This score is specific to the post voted on
     });
   } catch (error) {
     console.error('Vote error:', error);

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import * as jose from 'jose';
 import { prisma } from '@/lib/prisma';
+import { setAuthCookie } from '@/lib/authUtils';
 
 const signupSchema = z.object({
   email: z.string().email(),
@@ -89,6 +90,9 @@ export async function POST(request: NextRequest) {
       .setExpirationTime(Math.floor(Date.now() / 1000) + expirationTime)
       .sign(secretKey);
     
+    // Set the httpOnly cookie
+    await setAuthCookie(token, expirationTime);
+
     return NextResponse.json({ user, token }, { status: 201 });
   } catch (error) {
     console.error('Signup error:', error);

@@ -1,7 +1,10 @@
+'use client';
+
 import React, { useState, useEffect, useCallback } from 'react';
-import styled from 'styled-components';
-import { useAuth } from '@/hooks/useAuth'; // Assuming you have this hook
-import { formatDistanceToNow } from 'date-fns'; // For relative time
+import { User } from '@/lib/authUtils';
+import { formatDistanceToNow } from 'date-fns';
+import { BellOff, CheckCheck } from 'lucide-react'; // Import icons
+import { Button } from '@/components/ui/Button'; // Import custom Button
 
 // Types (could be imported from a shared types file or API schema later)
 interface TriggeringUser {
@@ -26,143 +29,24 @@ export interface ApiNotification {
   comment: NotificationComment | null;
 }
 
-const PopupContainer = styled.div`
-  position: absolute;
-  top: 60px; // Adjust as needed based on your navbar height
-  right: 10px; // Adjust as needed
-  width: 400px;
-  max-height: 500px;
-  background-color: ${props => props.theme.colors.white};
-  border-radius: ${props => props.theme.radii.lg};
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 1000;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-`;
-
-const Header = styled.div`
-  padding: ${props => props.theme.space.lg};
-  border-bottom: 1px solid ${props => props.theme.colors.secondaryLight};
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-
-  h3 {
-    margin: 0;
-    font-size: ${props => props.theme.fontSizes.lg};
-  }
-`;
-
-const Tabs = styled.div`
-  display: flex;
-  background-color: ${props => props.theme.colors.background};
-`;
-
-const TabButton = styled.button<{ active: boolean }>`
-  flex: 1;
-  padding: ${props => props.theme.space.md};
-  font-size: ${props => props.theme.fontSizes.md};
-  font-weight: ${props => props.theme.fontWeights.medium};
-  color: ${props => props.active ? props.theme.colors.primary : props.theme.colors.secondary};
-  border: none;
-  border-bottom: 2px solid ${props => props.active ? props.theme.colors.primary : 'transparent'};
-  background-color: transparent;
-  cursor: pointer;
-
-  &:hover {
-    background-color: ${props => props.theme.colors.secondaryLight};
-  }
-`;
-
-const NotificationList = styled.ul`
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  overflow-y: auto;
-  flex-grow: 1;
-`;
-
-const NotificationItemStyled = styled.li<{ read: boolean }>`
-  padding: ${props => props.theme.space.md} ${props => props.theme.space.lg};
-  border-bottom: 1px solid ${props => props.theme.colors.secondaryLight};
-  opacity: ${props => props.read ? 0.7 : 1};
-  background-color: ${props => !props.read ? props.theme.colors.primaryLight : props.theme.colors.white };
-  cursor: pointer;
-
-  &:hover {
-    background-color: ${props => props.theme.colors.secondaryLight};
-  }
-
-  p {
-    margin: 0 0 ${props => props.theme.space.xs} 0;
-    font-size: ${props => props.theme.fontSizes.md};
-  }
-
-  small {
-    font-size: ${props => props.theme.fontSizes.sm};
-    color: ${props => props.theme.colors.secondary};
-  }
-`;
-
-const EmptyState = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: ${props => props.theme.space.xl};
-  text-align: center;
-  color: ${props => props.theme.colors.secondary};
-  height: 100%;
-
-  svg {
-    width: 50px;
-    height: 50px;
-    margin-bottom: ${props => props.theme.space.md};
-    fill: ${props => props.theme.colors.secondaryLight};
-  }
-`;
-
-const Footer = styled.div`
-  padding: ${props => props.theme.space.md} ${props => props.theme.space.lg};
-  border-top: 1px solid ${props => props.theme.colors.secondaryLight};
-  text-align: center;
-`;
-
-const MarkAllReadButton = styled.button`
-  background-color: transparent;
-  color: ${props => props.theme.colors.primary};
-  border: none;
-  padding: ${props => props.theme.space.sm} ${props => props.theme.space.md};
-  font-size: ${props => props.theme.fontSizes.md};
-  cursor: pointer;
-  border-radius: ${props => props.theme.radii.md};
-
-  &:hover {
-    background-color: ${props => props.theme.colors.primaryLight};
-  }
-`;
-
 interface NotificationPopupProps {
   onClose: () => void;
-  onNotificationClick: (notification: ApiNotification) => void; // To handle navigation and marking as read
-  onMarkAllRead: () => Promise<void>; // Callback after marking all as read
+  onNotificationClick: (notification: ApiNotification) => void;
+  onMarkAllRead: () => Promise<void>;
+  user: User | null;
 }
 
-const NotificationPopup: React.FC<NotificationPopupProps> = ({ onClose, onNotificationClick, onMarkAllRead }) => {
-  const [activeTab, setActiveTab] = useState<'inbox' | 'archive' | 'comments'>('inbox');
+const NotificationPopup: React.FC<NotificationPopupProps> = ({ onClose, onNotificationClick, onMarkAllRead, user }) => {
+  const [activeTab, setActiveTab] = useState<'inbox' | 'archive'>('inbox'); // Removed 'comments' tab for now
   const [notifications, setNotifications] = useState<ApiNotification[]>([]);
   const [loading, setLoading] = useState(false);
-  const { token } = useAuth();
 
   const fetchNotifications = useCallback(async () => {
-    if (!token) return;
+    if (!user || !user.token) return;
     setLoading(true);
     try {
-      // In a real app, you might filter by read status on the backend
-      // For now, we fetch all and filter client-side based on tab for simplicity
-      const response = await fetch('/api/notifications?limit=50', { // Fetch more for client-side tab filtering
-        headers: { Authorization: `Bearer ${token}` },
+      const response = await fetch('/api/notifications?limit=50', {
+        headers: { Authorization: `Bearer ${user.token}` }, // Ensured user.token is accessed safely
       });
       if (!response.ok) throw new Error('Failed to fetch notifications');
       const data = await response.json();
@@ -173,7 +57,7 @@ const NotificationPopup: React.FC<NotificationPopupProps> = ({ onClose, onNotifi
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [user]);
 
   useEffect(() => {
     fetchNotifications();
@@ -181,7 +65,7 @@ const NotificationPopup: React.FC<NotificationPopupProps> = ({ onClose, onNotifi
 
   const handleMarkAllRead = async () => {
     await onMarkAllRead();
-    fetchNotifications(); // Refresh list
+    fetchNotifications();
   };
 
   const currentNotifications = notifications.filter(n => {
@@ -191,48 +75,88 @@ const NotificationPopup: React.FC<NotificationPopupProps> = ({ onClose, onNotifi
   });
 
   const getNotificationMessage = (n: ApiNotification): string => {
-    const user = n.triggeringUser?.username || 'Someone';
+    const triggeringUsername = n.triggeringUser?.username || 'Someone';
     switch (n.type) {
       case 'NEW_COMMENT_ON_POST':
-        return `${user} commented on your post: "${n.post?.title || 'a post'}"`;
+        return `${triggeringUsername} commented on your post: "${n.post?.title || 'a post'}"`;
       case 'REPLY_TO_COMMENT':
-        return `${user} replied to your comment: "${n.comment?.textContent?.substring(0,30) || 'your comment'}..."`;
+        const commentSnippet = n.comment?.textContent ? `"${n.comment.textContent.substring(0, 30)}..."` : 'your comment';
+        return `${triggeringUsername} replied to ${commentSnippet}`;
       default:
         return 'New notification';
     }
   };
 
   return (
-    <PopupContainer>
-      <Tabs onClick={(e) => e.stopPropagation()}>
-        <TabButton active={activeTab === 'inbox'} onClick={() => setActiveTab('inbox')}>Inbox</TabButton>
-        <TabButton active={activeTab === 'archive'} onClick={() => setActiveTab('archive')}>Archive</TabButton>
-      </Tabs>
-      <NotificationList>
-        {loading && <p style={{padding: '20px', textAlign: 'center'}}>Loading...</p>}
+    // PopupContainer
+    <div 
+      className="absolute top-[60px] right-[10px] w-[400px] max-h-[500px] bg-card border border-border rounded-lg shadow-lg z-[1000] flex flex-col overflow-hidden"
+      onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside popup
+    >
+      {/* Tabs */}
+      <div className="flex bg-muted/50">
+        {/* TabButton - Inbox */}
+        <button
+          onClick={() => setActiveTab('inbox')}
+          className={`flex-1 py-3 px-4 text-sm font-medium border-b-2 hover:bg-muted focus:outline-none
+            ${activeTab === 'inbox' ? 'text-primary border-primary' : 'text-muted-foreground border-transparent hover:border-muted-foreground/50'}`}
+        >
+          Inbox
+        </button>
+        {/* TabButton - Archive */}
+        <button
+          onClick={() => setActiveTab('archive')}
+          className={`flex-1 py-3 px-4 text-sm font-medium border-b-2 hover:bg-muted focus:outline-none
+            ${activeTab === 'archive' ? 'text-primary border-primary' : 'text-muted-foreground border-transparent hover:border-muted-foreground/50'}`}
+        >
+          Archive
+        </button>
+      </div>
+
+      {/* NotificationList */}
+      <ul className="list-none m-0 p-0 overflow-y-auto flex-grow">
+        {loading && <p className="p-5 text-center text-muted-foreground">Loading...</p>}
         {!loading && currentNotifications.length === 0 && (
-          <EmptyState>
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.822 7.431A1 1 0 0021 7H7.828L5.586 4.757A1 1 0 004.172 4H3a1 1 0 000 2h.828L5.172 7.243A1 1 0 005.828 7H9V5a1 1 0 011-1h4a1 1 0 011 1v2h1a1 1 0 011 1v2.172l4.414 4.414A2.002 2.002 0 0022 14.586V9a1 1 0 00-.178-.569z" /><path d="M3 9.172V19a2 2 0 002 2h13.172l-2.829-2.829A4.002 4.002 0 0114.586 16H9a1 1 0 110-2h5.586l-1.293-1.293A1.998 1.998 0 0012.586 12H9a3 3 0 00-3 3v.172l-3.757-3.757A1 1 0 001.586 11H.999a1 1 0 000 2h.172l2.656 2.656A1.5 1.5 0 003 16.414V9.172z" /></svg>
-            <p>{
-              activeTab === 'inbox' ? 'No new notifications' :
-              activeTab === 'archive' ? 'No archived notifications' :
-              'No comment-related notifications'
-            }</p>
-          </EmptyState>
+          // EmptyState
+          <div className="flex flex-col items-center justify-center p-5 text-center text-muted-foreground h-full min-h-[200px]">
+            <BellOff className="w-12 h-12 mb-4 text-muted-foreground/50" />
+            <p>
+              {activeTab === 'inbox' ? 'No new notifications' : 'No archived notifications'}
+            </p>
+          </div>
         )}
         {!loading && currentNotifications.map(n => (
-          <NotificationItemStyled key={n.id} read={n.read} onClick={() => onNotificationClick(n)}>
-            <p>{getNotificationMessage(n)}</p>
-            <small>{formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}</small>
-          </NotificationItemStyled>
+          // NotificationItemStyled
+          <li 
+            key={n.id} 
+            onClick={() => onNotificationClick(n)}
+            className={`py-3 px-4 border-b border-border cursor-pointer
+              ${!n.read ? 'bg-primary/10 hover:bg-primary/20' : 'bg-card hover:bg-muted/50'}
+              ${n.read ? 'opacity-70' : 'opacity-100'}`}
+          >
+            <p className="m-0 mb-1 text-sm text-foreground">{getNotificationMessage(n)}</p>
+            <small className="text-xs text-muted-foreground">
+              {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
+            </small>
+          </li>
         ))}
-      </NotificationList>
+      </ul>
+
+      {/* Footer */}
       {activeTab === 'inbox' && notifications.some(n => !n.read) && (
-        <Footer>
-          <MarkAllReadButton onClick={handleMarkAllRead}>Mark all as read</MarkAllReadButton>
-        </Footer>
+        <div className="p-3 border-t border-border text-center">
+          {/* MarkAllReadButton */}
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={handleMarkAllRead} 
+            className="text-primary hover:bg-primary/10"
+          >
+            <CheckCheck className="mr-2 h-4 w-4" /> Mark all as read
+          </Button>
+        </div>
       )}
-    </PopupContainer>
+    </div>
   );
 };
 

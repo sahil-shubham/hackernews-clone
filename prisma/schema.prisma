@@ -4,11 +4,13 @@
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["fullTextSearchPostgres"]
+  binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -45,6 +47,8 @@ model Post {
   votes         Vote[]
   notifications Notification[]
 
+  @@index([authorId])
+  @@index([createdAt])
   @@map("posts")
 }
 
@@ -65,6 +69,11 @@ model Comment {
   votes         Vote[]
   notifications Notification[]
 
+  @@index([authorId])
+  @@index([postId])
+  @@index([parentId])
+  @@index([createdAt])
+  @@index([postId, parentId, createdAt(sort: Desc)])
   @@map("comments")
 }
 
@@ -85,6 +94,8 @@ model Vote {
   // A user can only vote once on a post or comment
   @@unique([userId, postId])
   @@unique([userId, commentId])
+  @@index([postId])
+  @@index([commentId])
   @@map("votes")
 }
 

@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
+import { voteSchema } from '@/lib/schemas/vote';
+import { z } from 'zod';
 
-// Validate vote type input
-const voteSchema = z.object({
-  voteType: z.enum(['UPVOTE', 'DOWNVOTE']),
-});
 
 type Params = Promise<{ commentId: string }>
 

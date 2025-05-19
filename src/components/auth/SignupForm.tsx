@@ -1,17 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuthAPI } from '@/hooks/useAuthAPI';
 import { useRouter } from 'next/navigation';
-import { 
-  FormCard, 
-  Heading, 
-  FormGroup, 
-  Label, 
-  Input, 
-  Button, 
-  ErrorText 
-} from '@/styles/StyledComponents';
+import { Heading, ErrorText } from '@/components/ui/typography';
+import { Button } from '@/components/ui/Button';
 
 const SignupForm: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -21,7 +14,7 @@ const SignupForm: React.FC = () => {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const { signup } = useAuth();
+  const { signup } = useAuthAPI();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -48,8 +41,8 @@ const SignupForm: React.FC = () => {
       
       await signup(email, username, password);
       
-      // Redirect to home page after successful signup
       router.push('/');
+      router.refresh();
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);
@@ -62,72 +55,76 @@ const SignupForm: React.FC = () => {
   };
 
   return (
-    <FormCard>
-      <Heading level={2}>Sign Up</Heading>
-      <form onSubmit={handleSubmit}>
-        <FormGroup>
-          <Label htmlFor="email">
+    <div className="bg-card text-card-foreground shadow-xl rounded-lg p-6 sm:p-8 w-full max-w-md">
+      <Heading as="h2" className="text-2xl font-bold text-center mb-6">Sign Up</Heading>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div>
+          <label htmlFor="email" className="block text-sm font-medium text-foreground mb-1">
             Email
-          </Label>
-          <Input
+          </label>
+          <input
             id="email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
+            className="mt-1 block w-full px-3 py-2 bg-background border border-input rounded-md text-sm shadow-sm placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
           />
-        </FormGroup>
+        </div>
         
-        <FormGroup>
-          <Label htmlFor="username">
+        <div>
+          <label htmlFor="username" className="block text-sm font-medium text-foreground mb-1">
             Username
-          </Label>
-          <Input
+          </label>
+          <input
             id="username"
             type="text"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             required
+            className="mt-1 block w-full px-3 py-2 bg-background border border-input rounded-md text-sm shadow-sm placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
           />
-        </FormGroup>
+        </div>
         
-        <FormGroup>
-          <Label htmlFor="password">
+        <div>
+          <label htmlFor="password" className="block text-sm font-medium text-foreground mb-1">
             Password
-          </Label>
-          <Input
+          </label>
+          <input
             id="password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            className="mt-1 block w-full px-3 py-2 bg-background border border-input rounded-md text-sm shadow-sm placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
           />
-        </FormGroup>
+        </div>
         
-        <FormGroup>
-          <Label htmlFor="confirmPassword">
+        <div>
+          <label htmlFor="confirmPassword" className="block text-sm font-medium text-foreground mb-1">
             Confirm Password
-          </Label>
-          <Input
+          </label>
+          <input
             id="confirmPassword"
             type="password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
+            className="mt-1 block w-full px-3 py-2 bg-background border border-input rounded-md text-sm shadow-sm placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
           />
-        </FormGroup>
+        </div>
         
         <Button 
           type="submit" 
           disabled={isSubmitting}
-          fullWidth
+          className="w-full"
         >
           {isSubmitting ? 'Signing up...' : 'Sign Up'}
         </Button>
         
-        {error && <ErrorText>{error}</ErrorText>}
+        {error && <ErrorText className="mt-4 text-center">{error}</ErrorText>}
       </form>
-    </FormCard>
+    </div>
   );
 };
 

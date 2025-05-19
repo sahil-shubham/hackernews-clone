@@ -1,85 +1,31 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
+// import { useAuthStore } from '@/hooks/useAuthStore'; // Removed
+import { User } from '@/lib/authUtils'; // Added
 import { useRouter } from 'next/navigation';
-import styled from 'styled-components';
+import { Button } from '@/components/ui/Button';
+import { ErrorText, Text } from '@/components/ui/typography';
+import { FlexContainer } from '@/components/ui/layout';
 
 interface CommentFormProps {
   postId: string;
   onAddComment: (text: string) => Promise<void>;
   placeholder?: string;
+  parentId?: string; // For replies, if this form is reused
+  isSubmitting?: boolean;
+  error?: string | null;
+  user: User | null; // Added user prop
 }
-
-// Styled Components
-const FormContainer = styled.div`
-  background-color: white;
-  border-radius: 0.375rem;
-  padding: 1rem;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  margin-bottom: 1.5rem;
-`;
-
-const TextArea = styled.textarea`
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.25rem;
-`;
-
-const FormGroup = styled.div`
-  margin-bottom: 0.75rem;
-`;
-
-const ErrorMessage = styled.p`
-  color: #ef4444;
-  font-size: 0.875rem;
-  margin-top: 0.25rem;
-`;
-
-const ButtonContainer = styled.div`
-  display: flex;
-  justify-content: flex-end;
-`;
-
-const SubmitButton = styled.button<{ disabled: boolean }>`
-  padding: 0.5rem 1rem;
-  background-color: ${props => props.disabled ? '#fdba74' : '#ea580c'};
-  color: white;
-  border-radius: 0.25rem;
-  font-weight: 500;
-  &:hover {
-    background-color: ${props => props.disabled ? '#fdba74' : '#c2410c'};
-  }
-`;
-
-const LoginMessage = styled.div`
-  text-align: center;
-  padding: 1rem 0;
-`;
-
-const LoginText = styled.p`
-  color: #4b5563;
-  margin-bottom: 0.5rem;
-`;
-
-const LoginButton = styled.button`
-  padding: 0.5rem 1rem;
-  background-color: #ea580c;
-  color: white;
-  border-radius: 0.25rem;
-  font-weight: 500;
-  &:hover {
-    background-color: #c2410c;
-  }
-`;
 
 export default function CommentForm({ 
   postId, 
   onAddComment,
-  placeholder = 'What are your thoughts?'
+  placeholder = 'What are your thoughts?',
+  // parentId // Not used in this specific refactor pass, but good for future
+  user, // Added user to destructuring
 }: CommentFormProps) {
-  const { user } = useAuth();
+  // const user = useAuthStore((state) => state.user); // Removed
   const router = useRouter();
   
   const [comment, setComment] = useState('');
@@ -90,7 +36,7 @@ export default function CommentForm({
     e.preventDefault();
     
     if (!user) {
-      router.push(`/login?next=/post/${postId}`);
+      router.push(`/login?next=/post/${postId}`); // Consider adding parentId if replying deep
       return;
     }
     
@@ -104,12 +50,12 @@ export default function CommentForm({
       setError(null);
       
       await onAddComment(comment);
-      setComment('');
+      setComment(''); // Clear comment box on success
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError('Failed to post comment');
+        setError('Failed to post comment. Please try again.');
       }
     } finally {
       setIsSubmitting(false);
@@ -117,38 +63,42 @@ export default function CommentForm({
   };
   
   return (
-    <FormContainer>
+    <div className="bg-card p-4 rounded-lg shadow">
       {user ? (
-        <form onSubmit={handleSubmit}>
-          <FormGroup>
-            <TextArea
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <textarea
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               rows={4}
               placeholder={placeholder}
               required
+              className="w-full p-3 text-sm bg-background border border-input rounded-md shadow-sm focus:ring-2 focus:ring-ring focus:border-ring placeholder-muted-foreground"
             />
-            {error && <ErrorMessage>{error}</ErrorMessage>}
-          </FormGroup>
-          <ButtonContainer>
-            <SubmitButton
+            {error && <ErrorText className="mt-2 text-xs">{error}</ErrorText>}
+          </div>
+          <div className="flex justify-end">
+            <Button
               type="submit"
               disabled={isSubmitting || !comment.trim()}
+              size="sm"
             >
               {isSubmitting ? 'Posting...' : 'Post Comment'}
-            </SubmitButton>
-          </ButtonContainer>
+            </Button>
+          </div>
         </form>
       ) : (
-        <LoginMessage>
-          <LoginText>You need to be logged in to comment</LoginText>
-          <LoginButton
-            onClick={() => router.push(`/login?next=/post/${postId}`)}
+        <FlexContainer direction="col" align="center" gap="4" className="p-6 border border-dashed border-border rounded-md">
+          <Text emphasis="low" className="text-center">You need to be logged in to comment.</Text>
+          <Button
+            onClick={() => router.push(`/login?next=/post/${postId}`)} // Add parentId here too if needed
+            variant="outline"
+            size="sm"
           >
             Login to Comment
-          </LoginButton>
-        </LoginMessage>
+          </Button>
+        </FlexContainer>
       )}
-    </FormContainer>
+    </div>
   );
 } 

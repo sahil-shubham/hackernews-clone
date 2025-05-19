@@ -1,419 +1,191 @@
-'use client';
+import { Suspense } from 'react'
+import { notFound } from 'next/navigation'
+// import { cookies } from 'next/headers' // No longer directly needed for these functions
+import PostDetailPageClient from '@/components/post/PostDetailPageClient'
+import { getServerSideUser } from '@/lib/authUtils'
+import { prisma } from '@/lib/prisma' // Import Prisma client
+import type { Post as PostType } from '@/types/post'
+import type { Comment as CommentType } from '@/types/comment'
+import type { VoteType as PrismaVoteType } from '@prisma/client'
+import { PageContainer } from '@/components/ui/layout'
 
-import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
-import { formatDistanceToNow } from 'date-fns';
-import { useAuth } from '@/hooks/useAuth';
-import styled from 'styled-components';
-import CommentForm from '@/components/comment/CommentForm';
-import CommentItem, { Comment } from '@/components/comment/CommentItem';
-import { 
-  PageContainer, 
-  Card, 
-  Heading, 
-  Text, 
-  StyledLink,
-  ErrorText
-} from '@/styles/StyledComponents';
+export const revalidate = 60; // Revalidate this page at most every 60 seconds
 
-// Styled components for post detail page
-const PostCard = styled(Card)`
-  padding: ${props => props.theme.space.lg};
-`;
+const LoadingSkeleton = () => (
+  <PageContainer className="py-8">
+    <div className="animate-pulse bg-card p-6 rounded-lg shadow border border-border">
+      <div className="h-8 bg-muted rounded w-3/4 mb-4"></div>
+      <div className="h-4 bg-muted rounded w-1/2 mb-2"></div>
+      <div className="h-4 bg-muted rounded w-full mb-2"></div>
+      <div className="h-4 bg-muted rounded w-full mb-4"></div>
+      <div className="h-4 bg-muted rounded w-1/4"></div>
+    </div>
+    <div className="animate-pulse bg-card p-6 rounded-lg shadow mt-8 border border-border">
+      <div className="h-6 bg-muted rounded w-1/3 mb-6"></div>
+      <div className="h-10 bg-muted rounded w-full mb-4"></div>
+      <div className="space-y-4">
+        {[1, 2].map(i => (
+          <div key={i} className="p-4 border border-border rounded-md">
+            <div className="h-4 bg-muted rounded w-1/4 mb-2"></div>
+            <div className="h-4 bg-muted rounded w-full"></div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </PageContainer>
+)
 
-const PostTitle = styled(Heading)`
-  margin-bottom: ${props => props.theme.space.sm};
-`;
+async function fetchPostDetails(postId: string, currentUserId: string | null): Promise<PostType | null> {
+  const postData = await prisma.post.findUnique({
+    where: { id: postId },
+    include: {
+      author: {
+        select: { id: true, username: true },
+      },
+      votes: {
+        select: { userId: true, voteType: true },
+      },
+      _count: {
+        select: { comments: true },
+      },
+    },
+  })
 
-const PostUrl = styled.a`
-  display: block;
-  color: ${props => props.theme.colors.secondary};
-  font-size: ${props => props.theme.fontSizes.sm};
-  margin-bottom: ${props => props.theme.space.lg};
-  
-  &:hover {
-    text-decoration: underline;
-  }
-`;
+  if (!postData) return null
 
-const PostContent = styled.div`
-  margin: ${props => props.theme.space.lg} 0;
-  color: ${props => props.theme.colors.secondaryDark};
-`;
-
-const PreformattedText = styled.p`
-  white-space: pre-line;
-`;
-
-const PostMeta = styled.div`
-  font-size: ${props => props.theme.fontSizes.sm};
-  color: ${props => props.theme.colors.secondary};
-  margin-top: ${props => props.theme.space.lg};
-  display: flex;
-  flex-wrap: wrap;
-  gap: ${props => props.theme.space.xs};
-`;
-
-const MetaSeparator = styled.span`
-  margin: 0 ${props => props.theme.space.xs};
-`;
-
-const CommentsSection = styled.div`
-  padding: ${props => props.theme.space.lg} 0;
-`;
-
-const CommentsSectionHeader = styled.div`
-  margin-bottom: ${props => props.theme.space.lg};
-`;
-
-const CommentsHeading = styled.h3`
-  font-size: ${props => props.theme.fontSizes.lg};
-  font-weight: ${props => props.theme.fontWeights.medium};
-`;
-
-const CommentsContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: ${props => props.theme.space.md};
-`;
-
-const NoCommentsMessage = styled.div`
-  background-color: ${props => props.theme.colors.white};
-  border-radius: ${props => props.theme.radii.md};
-  padding: ${props => props.theme.space.xl};
-  text-align: center;
-  color: ${props => props.theme.colors.secondary};
-`;
-
-const ErrorContainer = styled.div`
-  background-color: #fee2e2;
-  border: 1px solid ${props => props.theme.colors.error};
-  color: ${props => props.theme.colors.error};
-  padding: ${props => props.theme.space.md};
-  border-radius: ${props => props.theme.radii.md};
-  margin-bottom: ${props => props.theme.space.lg};
-`;
-
-const LoadingContainer = styled(PostCard)`
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  
-  @keyframes pulse {
-    0%, 100% {
-      opacity: 1;
-    }
-    50% {
-      opacity: 0.5;
+  let currentUserVote: PrismaVoteType | undefined = undefined
+  if (currentUserId) {
+    const userVoteOnPost = postData.votes.find((vote) => vote.userId === currentUserId)
+    if (userVoteOnPost) {
+      currentUserVote = userVoteOnPost.voteType
     }
   }
-`;
 
-const LoadingTitle = styled.div`
-  height: 1.5rem;
-  background-color: #e5e7eb;
-  border-radius: ${props => props.theme.radii.sm};
-  width: 75%;
-  margin-bottom: ${props => props.theme.space.lg};
-`;
+  const points = postData.votes.reduce((acc, vote) => {
+    if (vote.voteType === 'UPVOTE') return acc + 1
+    if (vote.voteType === 'DOWNVOTE') return acc - 1
+    return acc
+  }, 0)
 
-const LoadingSubtitle = styled.div`
-  height: 1rem;
-  background-color: #f3f4f6;
-  border-radius: ${props => props.theme.radii.sm};
-  width: 50%;
-  margin-bottom: ${props => props.theme.space.xl};
-`;
+  return {
+    id: postData.id,
+    title: postData.title,
+    url: postData.url,
+    textContent: postData.textContent,
+    points: points,
+    author: postData.author,
+    createdAt: postData.createdAt.toISOString(),
+    commentCount: postData._count.comments,
+    type: postData.type as "LINK" | "TEXT",
+    voteType: currentUserVote,
+    hasVoted: !!currentUserVote,
+  }
+}
 
-const LoadingContent = styled.div`
-  height: 6rem;
-  background-color: #f3f4f6;
-  border-radius: ${props => props.theme.radii.sm};
-  margin-bottom: ${props => props.theme.space.lg};
-`;
+async function fetchPostComments(postId: string, currentUserId: string | null): Promise<CommentType[]> {
+  const commentsData = await prisma.comment.findMany({
+    where: { postId: postId, parentId: null },
+    include: {
+      author: {
+        select: { id: true, username: true },
+      },
+      votes: {
+        select: { userId: true, voteType: true },
+      },
+      replies: {
+        include: {
+          author: { select: { id: true, username: true } },
+          votes: { select: { userId: true, voteType: true } },
+          replies: {
+            include: {
+              author: { select: { id: true, username: true } },
+              votes: { select: { userId: true, voteType: true } },
+            },
+            orderBy: { createdAt: 'asc' },
+          },
+        },
+        orderBy: { createdAt: 'asc' },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  })
 
-export default function PostDetailPage() {
-  const { postId } = useParams();
-  const { user, token } = useAuth();
-  
-  const [post, setPost] = useState<any | null>(null);
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  
-  // Fetch post and comments
-  useEffect(() => {
-    const fetchPostAndComments = async () => {
-      setLoading(true);
-      setError(null);
-      
-      try {
-        const headers: HeadersInit = {};
-        if (token) {
-          headers.Authorization = `Bearer ${token}`;
+  const transformComments = (prismaComments: any[]): CommentType[] => {
+    return prismaComments.map((comment) => {
+      let currentUserVoteOnComment: PrismaVoteType | undefined = undefined
+      if (currentUserId) {
+        const userVote = comment.votes.find((vote: any) => vote.userId === currentUserId)
+        if (userVote) {
+          currentUserVoteOnComment = userVote.voteType
         }
-        
-        // Fetch post details
-        const postResponse = await fetch(`/api/posts/${postId}`, {
-          headers,
-        });
-        
-        if (!postResponse.ok) {
-          throw new Error('Failed to fetch post');
-        }
-        
-        const postData = await postResponse.json();
-        setPost(postData);
-        
-        // Fetch comments
-        const commentsResponse = await fetch(`/api/posts/${postId}/comments`, {
-          headers,
-        });
-        
-        if (!commentsResponse.ok) {
-          throw new Error('Failed to fetch comments');
-        }
-        
-        const commentsData = await commentsResponse.json();
-        setComments(commentsData.comments);
-      } catch (err) {
-        console.error('Error fetching post details:', err);
-        setError('Failed to load post. Please try again.');
-      } finally {
-        setLoading(false);
       }
-    };
-    
-    if (postId) {
-      fetchPostAndComments();
-    }
-  }, [postId, token]);
-  
-  // Handle comment voting
-  const handleCommentVote = async (commentId: string, voteType: 'UPVOTE' | 'DOWNVOTE') => {
-    if (!user || !token) return;
-    
-    try {
-      const response = await fetch(`/api/comments/${commentId}/vote`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ voteType }),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to vote on comment');
+
+      const points = comment.votes.reduce((acc: number, vote: any) => {
+        if (vote.voteType === 'UPVOTE') return acc + 1
+        if (vote.voteType === 'DOWNVOTE') return acc - 1
+        return acc
+      }, 0)
+
+      return {
+        id: comment.id,
+        textContent: comment.textContent,
+        author: comment.author,
+        createdAt: comment.createdAt.toISOString(),
+        points: points,
+        voteType: currentUserVoteOnComment,
+        hasVoted: !!currentUserVoteOnComment,
+        replies: comment.replies ? transformComments(comment.replies) : [],
       }
-      
-      // Update comment in the UI
-      setComments(prevComments => updateCommentVote(prevComments, commentId, voteType));
-    } catch (err) {
-      console.error('Error voting on comment:', err);
-    }
-  };
-  
-  // Update comment vote in UI
-  const updateCommentVote = (comments: Comment[], commentId: string, voteType: 'UPVOTE' | 'DOWNVOTE'): Comment[] => {
-    return comments.map(comment => {
-      if (comment.id === commentId) {
-        // If user already voted with the same vote type, we're removing the vote
-        return {
-          ...comment,
-          points: comment.voteType === voteType ? comment.points - 1 : comment.points + 1,
-          voteType: comment.voteType === voteType ? null : voteType,
-          hasVoted: comment.voteType !== voteType,
-        };
-      } else if (comment.replies && comment.replies.length > 0) {
-        // Check in replies recursively
-        return {
-          ...comment,
-          replies: updateCommentVote(comment.replies, commentId, voteType),
-        };
-      }
-      return comment;
-    });
-  };
-  
-  // Add new comment
-  const handleAddComment = async (text: string) => {
-    if (!user || !token) return;
-    
-    try {
-      const response = await fetch(`/api/posts/${postId}/comments`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ textContent: text }),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to post comment');
-      }
-      
-      const newComment = await response.json();
-      
-      // Add new comment to the UI
-      setComments(prevComments => [
-        ...prevComments,
-        {
-          ...newComment,
-          points: 0,
-          replies: [],
-        },
-      ]);
-    } catch (err) {
-      console.error('Error adding comment:', err);
-      throw err;
-    }
-  };
-  
-  // Handle comment reply
-  const handleCommentReply = async (parentId: string, text: string) => {
-    if (!user || !token) return;
-    
-    try {
-      const response = await fetch(`/api/posts/${postId}/comments`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ 
-          textContent: text,
-          parentId,
-        }),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to post reply');
-      }
-      
-      const newComment = await response.json();
-      
-      // Add reply to the UI
-      setComments(prevComments => addReplyToComment(prevComments, parentId, {
-        ...newComment,
-        points: 0,
-        replies: [],
-      }));
-    } catch (err) {
-      console.error('Error adding reply:', err);
-      throw err;
-    }
-  };
-  
-  // Add reply to comment recursively
-  const addReplyToComment = (comments: Comment[], parentId: string, newReply: Comment): Comment[] => {
-    return comments.map(comment => {
-      if (comment.id === parentId) {
-        return {
-          ...comment,
-          replies: [...(comment.replies || []), newReply],
-        };
-      } else if (comment.replies && comment.replies.length > 0) {
-        return {
-          ...comment,
-          replies: addReplyToComment(comment.replies, parentId, newReply),
-        };
-      }
-      return comment;
-    });
-  };
-  
-  // Loading state
-  if (loading) {
-    return (
-      <PageContainer>
-        <LoadingContainer>
-          <LoadingTitle />
-          <LoadingSubtitle />
-          <LoadingContent />
-        </LoadingContainer>
-      </PageContainer>
-    );
+    })
+  }
+  return transformComments(commentsData)
+}
+
+interface PostDetailPageProps {
+  params: Promise<{ postId: string } | undefined>;
+}
+
+export default async function PostDetailPage({ params: paramsPromise }: PostDetailPageProps) {
+  const params = await paramsPromise;
+  if (!params) {
+    notFound();
+  }
+  const { postId } = params;
+  const currentUser = await getServerSideUser();
+
+  // Fetch data in parallel
+  const [postResult, commentsResult] = await Promise.allSettled([
+    fetchPostDetails(postId, currentUser?.id || null),
+    fetchPostComments(postId, currentUser?.id || null)
+  ])
+
+  const post = postResult.status === 'fulfilled' ? postResult.value : null
+  // If fetching post details failed critically (not just 404), we might want to throw or show error page.
+  if (postResult.status === 'rejected') {
+    console.error("Failed to load post details:", postResult.reason)
+    // Optionally, render an error page or throw to trigger Next.js error boundary
+    // For now, if post is null, PostDetailPageClient will handle it (shows "Post not found").
   }
   
-  // Error state
-  if (error || !post) {
-    return (
-      <PageContainer>
-        <ErrorContainer>
-          {error || 'Post not found'}
-        </ErrorContainer>
-        <StyledLink href="/">
-          Back to home
-        </StyledLink>
-      </PageContainer>
-    );
+  if (!post) {
+    notFound() // Triggers Next.js 404 page
   }
-  
-  // Format the domain from URL if present
-  const domain = post.url ? new URL(post.url).hostname.replace(/^www\./, '') : null;
-  
-  // Format the time since post creation
-  const timeAgo = formatDistanceToNow(new Date(post.createdAt), { addSuffix: true });
-  
+
+  const comments = commentsResult.status === 'fulfilled' ? commentsResult.value : []
+  if (commentsResult.status === 'rejected') {
+    console.error("Failed to load comments:", commentsResult.reason)
+    // Comments failing to load might not be as critical as post failing.
+    // We proceed with empty comments array and log error.
+  }
+
   return (
-    <PageContainer>
-      {/* Post details */}
-      <PostCard>
-        <PostTitle level={1}>{post.title}</PostTitle>
-        
-        {post.url && (
-          <PostUrl 
-            href={post.url}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {domain && `(${domain})`}
-          </PostUrl>
-        )}
-        
-        {post.textContent && (
-          <PostContent>
-            <PreformattedText>{post.textContent}</PreformattedText>
-          </PostContent>
-        )}
-        
-        <PostMeta>
-          <span>{post.points} points</span>
-          <MetaSeparator>•</MetaSeparator>
-          <span>by {post.author.username}</span>
-          <MetaSeparator>•</MetaSeparator>
-          <span>{timeAgo}</span>
-          <MetaSeparator>•</MetaSeparator>
-          <span>{post.commentCount} comments</span>
-        </PostMeta>
-      </PostCard>
-      
-      {/* Comment form */}
-      <CommentForm postId={postId as string} onAddComment={handleAddComment} />
-      
-      {/* Display comments */}
-      <CommentsSection>
-        <CommentsSectionHeader>
-          <CommentsHeading>Comments {comments.length > 0 && `(${comments.length})`}</CommentsHeading>
-        </CommentsSectionHeader>
-        
-        {comments.length === 0 ? (
-          <NoCommentsMessage>
-            No comments yet. Be the first to comment!
-          </NoCommentsMessage>
-        ) : (
-          <CommentsContainer>
-            {comments.map((comment) => (
-              <CommentItem
-                key={comment.id}
-                comment={comment}
-                onVote={handleCommentVote}
-                onReply={handleCommentReply}
-              />
-            ))}
-          </CommentsContainer>
-        )}
-      </CommentsSection>
-    </PageContainer>
-  );
-} 
+    <Suspense fallback={<LoadingSkeleton />}>
+      <PostDetailPageClient
+        initialPost={post}
+        initialComments={comments}
+        currentUser={currentUser}
+        postId={postId}
+      />
+    </Suspense>
+  )
+}

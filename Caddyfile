@@ -1,0 +1,32 @@
+{
+    # Global options block
+    acme_dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+    # Email for ACME (SSL certificate) registration and recovery
+    email spam@sahil-shubham.in
+}
+
+# Replace your-domain.com with your actual domain
+spc.sahil-shubham.in {
+    # Enable compression
+    encode zstd gzip
+
+    # Log requests
+    log {
+        output stdout
+        format console
+    }
+
+    # Use Cloudflare DNS challenge for SSL
+    tls {
+        dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+    }
+
+    # Reverse proxy requests to your Next.js app service
+    # The name 'app' comes from your docker-compose.yml service name
+    reverse_proxy app:3000
+}
+
+# Optional: Redirect www to non-www (or vice-versa)
+www.spc.sahil-shubham.in {
+    redir https://spc.sahil-shubham.in{uri} permanent
+}

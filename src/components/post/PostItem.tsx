@@ -1,185 +1,176 @@
-'use client';
+'use client'
 
-import React from 'react';
-import Link from 'next/link';
-import { formatDistanceToNow } from 'date-fns';
-import { useAuth } from '@/hooks/useAuth';
-import styled from 'styled-components';
-
-// Types
-export interface Post {
-  id: string;
-  title: string;
-  url?: string | null;
-  textContent?: string | null;
-  type: 'LINK' | 'TEXT';
-  author: {
-    id: string;
-    username: string;
-  };
-  points: number;
-  commentCount: number;
-  createdAt: string | Date;
-  hasVoted?: boolean | null;
-  voteType?: 'UPVOTE' | 'DOWNVOTE' | null;
-}
+import React, { useState, useEffect } from 'react'
+import Link from 'next/link'
+import { formatDistanceToNow } from 'date-fns'
+import {
+  ChevronUp,
+  ChevronDown,
+  MessageSquare,
+  ExternalLink
+  // Bookmark, // For future use
+  // Share2, // For future use
+} from 'lucide-react'
+// import { useAuthStore } from '@/hooks/useAuthStore' // Removed
+import { User } from '@/lib/authUtils'; // Added
+import type { Post as PostType } from '@/types/post' // Renamed to avoid conflict with component
+// Removed: import { usePostAPI } from '@/hooks/usePostAPI' 
 
 interface PostItemProps {
-  post: Post;
-  rank?: number;
-  onVote?: (postId: string, voteType: 'UPVOTE' | 'DOWNVOTE') => Promise<void>;
+  post: PostType
+  onVote: (postId: string, voteType: 'UPVOTE' | 'DOWNVOTE') => Promise<void> // Expects updated post or null
+  index?: number
+  user: User | null; // Added user prop
 }
 
-// Styled Components
-const PostContainer = styled.div`
-  background-color: white;
-  border-radius: 0.375rem;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  padding: 0.75rem;
-  margin-bottom: 0.75rem;
-  font-size: 0.875rem;
-`;
+const PostItem: React.FC<PostItemProps> = ({ post, onVote, index, user }) => {
+  // const user = useAuthStore((state) => state.user) // Removed
 
-const PostContent = styled.div`
-  display: flex;
-  align-items: flex-start;
-`;
+  // Local state for optimistic UI updates based on V0 example
+  const [currentVote, setCurrentVote] = useState<'UPVOTE' | 'DOWNVOTE' | null>(null)
+  const [displayPoints, setDisplayPoints] = useState(post.points)
 
-const RankNumber = styled.span`
-  color: #6b7280;
-  margin-right: 0.5rem;
-  width: 1.25rem;
-  text-align: right;
-`;
+  // Effect to sync with prop changes (e.g., after parent re-fetches or on initial load)
+  useEffect(() => {
+    setDisplayPoints(post.points)
+    setCurrentVote(post.voteType || null)
+  }, [post.points, post.voteType])
 
-const VoteContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-right: 0.5rem;
-  margin-top: 0.25rem;
-`;
-
-const VoteButton = styled.button<{ active: boolean }>`
-  color: ${props => props.active ? '#ea580c' : '#9ca3af'};
-  &:hover {
-    color: #f97316;
-  }
-`;
-
-const PostDetails = styled.div`
-  flex: 1;
-`;
-
-const PostTitle = styled.div`
-  font-weight: 500;
-`;
-
-const TitleLink = styled.a`
-  &:hover {
-    text-decoration: underline;
-  }
-`;
-
-const StyledLink = styled(Link)`
-  &:hover {
-    text-decoration: underline;
-  }
-`;
-
-const Domain = styled.span`
-  color: #6b7280;
-  margin-left: 0.25rem;
-  font-size: 0.75rem;
-`;
-
-const MetadataContainer = styled.div`
-  font-size: 0.75rem;
-  color: #6b7280;
-  margin-top: 0.25rem;
-`;
-
-const MetadataSeparator = styled.span`
-  margin: 0 0.25rem;
-`;
-
-export default function PostItem({ post, rank, onVote }: PostItemProps) {
-  const { user } = useAuth();
-  
-  // Format the domain from URL if present
-  const domain = post.url ? new URL(post.url).hostname.replace(/^www\./, '') : null;
-  
-  // Format the time since post creation
-  const timeAgo = formatDistanceToNow(new Date(post.createdAt), { addSuffix: true });
-
-  const handleVote = async (voteType: 'UPVOTE' | 'DOWNVOTE') => {
-    if (!user) return;
-    if (onVote) {
-      await onVote(post.id, voteType);
+  const handleVote = async (newVoteDirection: 'UPVOTE' | 'DOWNVOTE') => {
+    if (!user) {
+      alert('Please login to vote.')
+      return
     }
-  };
+
+    let newOptimisticPoints = displayPoints
+    const originalPoints = post.points // Points before this vote action
+    const originalVote = post.voteType || null // Vote state before this action
+
+    if (currentVote === newVoteDirection) {
+      // Clicking the same button (undo vote)
+      newOptimisticPoints = originalPoints
+      setCurrentVote(null)
+    } else {
+      // New vote or switching vote
+      newOptimisticPoints =
+        originalPoints +
+        (newVoteDirection === 'UPVOTE' ? 1 : -1) * (originalVote && originalVote !== newVoteDirection ? 2 : 1)
+      setCurrentVote(newVoteDirection)
+    }
+    setDisplayPoints(newOptimisticPoints)
+
+    try {
+      await onVote(post.id, newVoteDirection)
+      // If server confirms, re-sync with server state if needed, though optimistic is usually fine
+      // setDisplayPoints(updatedPostFromServer.points);
+      // setCurrentVote(updatedPostFromServer.voteType || null);
+        // Rollback optimistic update if server call fails or returns null
+        setDisplayPoints(post.points)
+        setCurrentVote(post.voteType || null)
+        alert('Failed to register vote. Please try again.')
+    } catch (error) {
+      console.error('Failed to vote:', error)
+      // Rollback optimistic update
+      setDisplayPoints(post.points)
+      setCurrentVote(post.voteType || null)
+      alert('Failed to register vote. Please try again.')
+    }
+  }
+
+  const domain = post.url ? new URL(post.url).hostname.replace(/^www\./, '') : null
+  const timeAgo = formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })
+  const isAskHN = post.type === 'TEXT' // Determine if it's an "Ask HN" type post
+
+  const postHref = post.url || `/post/${post.id}`
+  const postLinkTarget = post.url ? '_blank' : undefined
+
+  const focusRingClass = 'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 rounded'
 
   return (
-    <PostContainer>
-      <PostContent>
-        {/* Rank number if provided */}
-        {rank && (
-          <RankNumber>{rank}.</RankNumber>
-        )}
-        
-        {/* Vote arrow - only show if user is logged in */}
-        {user && (
-          <VoteContainer>
-            <VoteButton 
-              onClick={() => handleVote('UPVOTE')}
-              active={post.voteType === 'UPVOTE'}
-              aria-label="Upvote"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
-                <path d="M12 3.75l7.5 7.5h-4.5v9h-6v-9H4.5l7.5-7.5z" />
-              </svg>
-            </VoteButton>
-          </VoteContainer>
-        )}
-        
-        <PostDetails>
-          {/* Title and URL */}
-          <PostTitle>
-            {post.url ? (
-              <TitleLink 
-                href={post.url}
-                target="_blank"
-                rel="noopener noreferrer"
+    <article className="overflow-hidden transition-all bg-card border border-border rounded-md shadow-sm hover:border-muted-foreground/20 mb-4">
+      <div className="flex">
+        {/* Left sidebar with voting */}
+        <div className="flex flex-col items-center py-2 px-2.5 bg-muted/20 border-r border-border">
+          <button
+            onClick={() => handleVote('UPVOTE')}
+            className={`p-1 rounded-full transition-colors ${focusRingClass} ${currentVote === 'UPVOTE' ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:bg-muted/50 disabled:text-gray-400'}`}
+            aria-label="Upvote"
+            disabled={!user}
+          >
+            <ChevronUp className="h-5 w-5" />
+          </button>
+
+          <span
+            className={`text-sm font-medium tabular-nums ${currentVote === 'UPVOTE' ? 'text-primary' : currentVote === 'DOWNVOTE' ? 'text-destructive font-semibold' : 'text-foreground'}`}
+          >
+            {displayPoints}
+          </span>
+
+          <button
+            onClick={() => handleVote('DOWNVOTE')}
+            className={`p-1 rounded-full transition-colors ${focusRingClass} ${currentVote === 'DOWNVOTE' ? 'text-destructive bg-destructive/10' : 'text-muted-foreground hover:bg-muted/50 disabled:text-gray-400'}`}
+            aria-label="Downvote"
+            disabled={!user}
+          >
+            <ChevronDown className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Main content */}
+        <div className="flex-1 flex flex-col p-4 flex-grow">
+          <div className="flex items-start gap-2 mb-1.5">
+            {isAskHN && (
+              <span className="mt-0.5 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/30 flex-shrink-0">
+                Ask HN
+              </span>
+            )}
+            <h3 className="text-base sm:text-lg font-medium leading-tight flex-grow">
+              <Link
+                href={postHref}
+                passHref
+                className={`${focusRingClass} -ml-0.5 px-0.5 ${post.url ? 'flex items-start gap-1.5' : ''}`}
               >
                 {post.title}
-              </TitleLink>
-            ) : (
-              <StyledLink href={`/post/${post.id}`}>
-                {post.title}
-              </StyledLink>
+                {post.url && <ExternalLink className="h-3 w-3 mt-[0.3rem] flex-shrink-0 text-muted-foreground" />}
+              </Link>
+            </h3>
+            {domain && post.url && (
+              <Link
+                href={post.url}
+                passHref
+                className={`text-xs text-muted-foreground hover:underline flex items-center gap-1 mt-1 flex-shrink-0 ${focusRingClass} px-0.5`}
+              >
+                {domain}
+                <ExternalLink className="h-3 w-3" />
+              </Link>
             )}
-            
-            {domain && (
-              <Domain>
-                ({domain})
-              </Domain>
-            )}
-          </PostTitle>
-          
-          {/* Post metadata */}
-          <MetadataContainer>
-            <span>{post.points} points</span>
-            <MetadataSeparator>•</MetadataSeparator>
-            <span>by {post.author.username}</span>
-            <MetadataSeparator>•</MetadataSeparator>
+          </div>
+
+          <div className="flex items-center text-sm text-muted-foreground gap-x-3 gap-y-1 flex-wrap">
+            <span>
+              by{' '}
+              <Link
+                href={`/user/${post.author.username}`}
+                passHref
+                className={`hover:underline font-medium text-foreground/80 ${focusRingClass} px-0.5`}
+              >
+                {post.author.username}
+              </Link>
+            </span>
             <span>{timeAgo}</span>
-            <MetadataSeparator>•</MetadataSeparator>
-            <StyledLink href={`/post/${post.id}`}>
+            <Link
+              href={`/post/${post.id}`}
+              className={`flex items-center gap-1 hover:text-foreground transition-colors ${focusRingClass} px-0.5`}
+              passHref
+            >
+              <MessageSquare className="h-4 w-4" />
               {post.commentCount} {post.commentCount === 1 ? 'comment' : 'comments'}
-            </StyledLink>
-          </MetadataContainer>
-        </PostDetails>
-      </PostContent>
-    </PostContainer>
-  );
-} 
+            </Link>
+          </div>
+        </div>
+      </div>
+    </article>
+  )
+}
+
+export default PostItem
