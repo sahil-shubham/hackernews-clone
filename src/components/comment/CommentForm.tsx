@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useAuthStore } from '@/hooks/useAuthStore';
+// import { useAuthStore } from '@/hooks/useAuthStore'; // Removed
+import { User } from '@/lib/authUtils'; // Added
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { ErrorText, Text } from '@/components/ui/typography';
@@ -14,6 +15,7 @@ interface CommentFormProps {
   parentId?: string; // For replies, if this form is reused
   isSubmitting?: boolean;
   error?: string | null;
+  user: User | null; // Added user prop
 }
 
 export default function CommentForm({ 
@@ -21,8 +23,9 @@ export default function CommentForm({
   onAddComment,
   placeholder = 'What are your thoughts?',
   // parentId // Not used in this specific refactor pass, but good for future
+  user, // Added user to destructuring
 }: CommentFormProps) {
-  const user = useAuthStore((state) => state.user);
+  // const user = useAuthStore((state) => state.user); // Removed
   const router = useRouter();
   
   const [comment, setComment] = useState('');

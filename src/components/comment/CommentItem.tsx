@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/typography';
 import { FlexContainer } from '@/components/ui/layout';
 import CommentForm from './CommentForm'; // For inline replies
-import type { User } from '@/hooks/useAuthStore'; // Added User type
+import { User } from '@/lib/authUtils'; // Added
 
 interface CommentItemProps {
   comment: CommentType;
@@ -169,10 +169,11 @@ const CommentItem: React.FC<CommentItemProps> = ({
               )}
             </FlexContainer>
             
-            {isReplying && onReply && (
+            {isReplying && onReply && currentUser && (
               <div className="mt-3">
                 <CommentForm 
                   postId={postId}
+                  user={currentUser} // Pass currentUser to CommentForm
                   onAddComment={handleReplySubmit} 
                   placeholder={`Replying to ${comment.author.username}...`}
                   parentId={comment.id}

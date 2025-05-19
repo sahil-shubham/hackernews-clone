@@ -1,10 +1,8 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useAuthStore } from './useAuthStore'
 
 export const useAuthAPI = () => {
-  const setUser = useAuthStore((store) => store.setUser)
   const router = useRouter()
 
   const login = async (emailOrUsername: string, password: string) => {
@@ -20,7 +18,6 @@ export const useAuthAPI = () => {
     }
 
     const data = await response.json()
-    setUser(data.user ? { ...data.user, token: data.token } : null)
     return data
   }
 
@@ -37,7 +34,6 @@ export const useAuthAPI = () => {
     }
     
     const data = await response.json()
-    setUser(data.user ? { ...data.user, token: data.token } : null)
     return data
   }
 
@@ -47,8 +43,8 @@ export const useAuthAPI = () => {
     } catch (error) {
       console.error('Logout API call failed:', error)
     }
-    setUser(null)
     router.push('/')
+    router.refresh()
   }
 
   return {

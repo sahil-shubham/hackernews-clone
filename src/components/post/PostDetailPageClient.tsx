@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
-import { useAuthStore, type User } from '@/hooks/useAuthStore';
+import { User } from '@/lib/authUtils';
 import CommentForm from '@/components/comment/CommentForm';
 import CommentList from '@/components/comment/CommentList';
 import { PageContainer, FlexContainer } from '@/components/ui/layout';
@@ -26,10 +26,10 @@ export default function PostDetailPageClient({
   currentUser,
   postId,
 }: PostDetailPageClientProps) {
-  const { user: authStoreUser } = useAuthStore(); // Get user from store for dynamic updates if needed
+  // const { user: authStoreUser } = useAuthStore(); // Removed
   // currentUser prop is the source of truth on initial load from server.
   // authStoreUser can be used if we expect client-side login/logout to affect this page dynamically without full reload.
-  const effectiveUser = currentUser; // Or some logic to prefer authStoreUser if it has changed
+  const effectiveUser = currentUser; // Use currentUser directly
 
   const [post, setPost] = useState<PostType | null>(initialPost);
   const [comments, setComments] = useState<CommentType[]>(initialComments);
@@ -248,14 +248,15 @@ export default function PostDetailPageClient({
       </article>
 
       {effectiveUser && postId && (
-         <div className="mb-8">
-           <CommentForm 
-             postId={postId} 
-             onAddComment={handleAddComment} 
-             isSubmitting={isSubmittingComment} 
-             error={actionError} 
-           />
-         </div>
+        <div className="mb-8">
+          <CommentForm 
+            postId={postId} 
+            onAddComment={handleAddComment} 
+            user={effectiveUser}
+            isSubmitting={isSubmittingComment} 
+            error={actionError} 
+          />
+        </div>
       )}
       {!effectiveUser && <Text className="mb-8 text-center text-muted-foreground">Please <Link href={`/login?next=/post/${postId}`} className="text-primary hover:underline">login</Link> to comment.</Text>}
 

@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
       .sign(secretKey);
     
     // Set the httpOnly cookie
-    setAuthCookie(token, expirationTime);
+    await setAuthCookie(token, expirationTime);
 
     return NextResponse.json({ user, token }, { status: 201 });
   } catch (error) {

@@ -5,7 +5,7 @@ import CommentItem from './CommentItem';
 import type { Comment as CommentType } from '@/types/comment';
 import { Heading as UiHeading } from '@/components/ui/typography';
 import { Text } from '@/components/ui/typography';
-import type { User } from '@/hooks/useAuthStore';
+import { User } from '@/lib/authUtils';
 
 interface CommentListProps {
   comments: CommentType[];

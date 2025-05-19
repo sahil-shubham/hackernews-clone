@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useAuthStore } from '@/hooks/useAuthStore';
+import { User } from '@/lib/authUtils';
 import { formatDistanceToNow } from 'date-fns';
 import { BellOff, CheckCheck } from 'lucide-react'; // Import icons
 import { Button } from '@/components/ui/Button'; // Import custom Button
@@ -33,16 +33,16 @@ interface NotificationPopupProps {
   onClose: () => void;
   onNotificationClick: (notification: ApiNotification) => void;
   onMarkAllRead: () => Promise<void>;
+  user: User | null;
 }
 
-const NotificationPopup: React.FC<NotificationPopupProps> = ({ onClose, onNotificationClick, onMarkAllRead }) => {
+const NotificationPopup: React.FC<NotificationPopupProps> = ({ onClose, onNotificationClick, onMarkAllRead, user }) => {
   const [activeTab, setActiveTab] = useState<'inbox' | 'archive'>('inbox'); // Removed 'comments' tab for now
   const [notifications, setNotifications] = useState<ApiNotification[]>([]);
   const [loading, setLoading] = useState(false);
-  const user = useAuthStore((state) => state.user);
 
   const fetchNotifications = useCallback(async () => {
-    if (!user) return; // Added user check
+    if (!user || !user.token) return;
     setLoading(true);
     try {
       const response = await fetch('/api/notifications?limit=50', {

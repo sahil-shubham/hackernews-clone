@@ -1,6 +1,7 @@
 'use client';
 
-import { useAuthStore, type User } from "@/hooks/useAuthStore";
+// import { useAuthStore, type User } from "@/hooks/useAuthStore"; // Removed
+import { User } from '@/lib/authUtils'; // Added
 import { Post } from "@/types/post";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -15,17 +16,18 @@ interface HomePageClientProps {
     totalPosts: number;
   };
   initialError: string | null;
-  initialUser: User | null; // This prop is still passed from page.tsx but not actively used for store sync here
+  initialUser: User | null; 
 }
 
 export default function HomePageClient({
   initialPosts,
   initialPagination,
   initialError,
+  initialUser, // Added initialUser to destructuring
 }: HomePageClientProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { user } = useAuthStore(); // Removed setAuthUser, store is initialized globally
+  // const { user } = useAuthStore(); // Removed
 
   const [posts, setPosts] = useState<Post[]>(initialPosts);
   const [loading, setLoading] = useState(false); 
@@ -43,7 +45,7 @@ export default function HomePageClient({
   }, [initialPosts, initialPagination, initialError]);
 
   const handleVote = async (postId: string, voteType: 'UPVOTE' | 'DOWNVOTE') => {
-    if (!user || !user.token) {
+    if (!initialUser || !initialUser.token) { // Changed to use initialUser
       console.error('User not logged in or token missing for voting');
       setError('Please log in to vote.');
       return;
@@ -80,7 +82,7 @@ export default function HomePageClient({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${user.token}`,
+          Authorization: `Bearer ${initialUser.token}`, // Changed to use initialUser.token
         },
         body: JSON.stringify({ voteType }),
       });
@@ -130,7 +132,7 @@ export default function HomePageClient({
         </div>
       }
       
-      <PostList posts={posts} onVote={handleVote} /> 
+      <PostList posts={posts} onVote={handleVote} user={initialUser} /> {/* Pass initialUser to PostList */}
       
       {!loading && pagination.totalPages > 1 && (
         <div className="flex justify-center py-lg">

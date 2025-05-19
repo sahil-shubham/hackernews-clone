@@ -3,7 +3,7 @@ import { clearAuthCookie } from '@/lib/authUtils';
 
 export async function POST() {
   try {
-    clearAuthCookie();
+    await clearAuthCookie();
     return NextResponse.json({ message: 'Logged out successfully' }, { status: 200 });
   } catch (error) {
     console.error('Logout error:', error);

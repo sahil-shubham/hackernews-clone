@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
-// import redis from '@/lib/redis';
-import { createPostSchema, postSchema as fetchedPostSchema } from '@/lib/schemas/post'; // Import createPostSchema and rename postSchema to avoid conflict
+import { createPostSchema, postSchema} from '@/lib/schemas/post';
 
-// const CACHE_TTL_SECONDS = 10 * 60; // 10 minutes
-
-// Validate query parameters with Zod
 const querySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(100).default(30),
@@ -16,7 +12,6 @@ const querySchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    // Parse query parameters
     const url = new URL(request.url);
     const parsed = querySchema.safeParse({
       page: url.searchParams.get('page'),
@@ -34,39 +29,16 @@ export async function GET(request: NextRequest) {
 
     const { page, limit, sort, search } = parsed.data;
 
-    // Only cache the first page for the specified sort orders
-    // const canCache = page === 1 && ['new', 'top', 'best'].includes(sort) && redis;
-    // const cacheKey = canCache ? `posts:${sort}:page:1:limit:${limit}` : null;
-
-    // if (canCache && cacheKey) {
-    //   try {
-    //     const cachedData = await redis?.get(cacheKey);
-    //     if (cachedData) {
-    //       console.log(`Cache HIT for key: ${cacheKey}`);
-    //       return NextResponse.json(JSON.parse(cachedData));
-    //     }
-    //     console.log(`Cache MISS for key: ${cacheKey}`);
-    //   } catch (cacheError) {
-    //     console.error(`Redis GET error for key ${cacheKey}:`, cacheError);
-    //     // Proceed to fetch from DB if cache read fails
-    //   }
-    // }
 
     const skip = (page - 1) * limit;
 
-    // Get userId from header if available (set by middleware)
     const userId = request.headers.get('x-user-id');
 
-    // Create base query
     const where: any = {};
     if (search) {
-      // Prepare search term for PostgreSQL FTS: replace spaces with '&' for AND logic
-      // Also, escape special FTS characters if necessary, though for simple terms this might be enough.
-      // More robust parsing might involve splitting by space and joining with ' & '
-      // or handling quotes for phrase searches, etc.
       const ftsSearchTerm = search.trim().split(/\s+/).join(' & ');
       
-      if (ftsSearchTerm) { // Ensure the term is not empty after processing
+      if (ftsSearchTerm) {
         where.OR = [
           { title: { search: ftsSearchTerm } },
           { textContent: { search: ftsSearchTerm } },
@@ -74,7 +46,6 @@ export async function GET(request: NextRequest) {
       }
     }
     
-    // Define sort order based on sort parameter
     let orderBy: any = {};
     
     switch (sort) {
@@ -82,8 +53,6 @@ export async function GET(request: NextRequest) {
         orderBy = { createdAt: 'desc' };
         break;
       case 'top':
-        // For simplicity, we'll do a basic score sort.
-        // In a real app, you'd implement a more sophisticated algorithm
         orderBy = [
           { votes: { _count: 'desc' } },
           { createdAt: 'desc' }

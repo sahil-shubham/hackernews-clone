@@ -11,17 +11,20 @@ import {
   // Bookmark, // For future use
   // Share2, // For future use
 } from 'lucide-react'
-import { useAuthStore } from '@/hooks/useAuthStore'
+// import { useAuthStore } from '@/hooks/useAuthStore' // Removed
+import { User } from '@/lib/authUtils'; // Added
 import type { Post as PostType } from '@/types/post' // Renamed to avoid conflict with component
+// Removed: import { usePostAPI } from '@/hooks/usePostAPI' 
 
 interface PostItemProps {
   post: PostType
   onVote: (postId: string, voteType: 'UPVOTE' | 'DOWNVOTE') => Promise<void> // Expects updated post or null
   index?: number
+  user: User | null; // Added user prop
 }
 
-const PostItem: React.FC<PostItemProps> = ({ post, onVote, index }) => {
-  const user = useAuthStore((state) => state.user)
+const PostItem: React.FC<PostItemProps> = ({ post, onVote, index, user }) => {
+  // const user = useAuthStore((state) => state.user) // Removed
 
   // Local state for optimistic UI updates based on V0 example
   const [currentVote, setCurrentVote] = useState<'UPVOTE' | 'DOWNVOTE' | null>(null)

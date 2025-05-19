@@ -42,6 +42,7 @@ const SignupForm: React.FC = () => {
       await signup(email, username, password);
       
       router.push('/');
+      router.refresh();
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);

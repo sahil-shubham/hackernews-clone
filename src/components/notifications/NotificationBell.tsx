@@ -1,21 +1,24 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useAuthStore } from '@/hooks/useAuthStore';
+import { User } from '@/lib/authUtils';
 import NotificationPopup from './NotificationPopup';
 import type { ApiNotification } from './NotificationPopup';
 import { useRouter } from 'next/navigation';
 import { Bell } from 'lucide-react';
 
-const NotificationBell: React.FC = () => {
+interface NotificationBellProps {
+  user: User | null;
+}
+
+const NotificationBell: React.FC<NotificationBellProps> = ({ user }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-  const user = useAuthStore((state) => state.user)
   const router = useRouter();
   const bellRef = useRef<HTMLDivElement>(null);
 
   const fetchUnreadCount = useCallback(async () => {
-    if (!user) return;
+    if (!user || !user.token) return;
     try {
       const response = await fetch('/api/notifications?limit=100', {
         headers: { Authorization: `Bearer ${user.token}` },
@@ -58,7 +61,7 @@ const NotificationBell: React.FC = () => {
   };
 
   const handleNotificationClick = async (notification: ApiNotification) => {
-    if (!user) return;
+    if (!user || !user.token) return;
     try {
       if (!notification.read) {
         await fetch(`/api/notifications/${notification.id}`, {
@@ -80,7 +83,7 @@ const NotificationBell: React.FC = () => {
   };
 
   const handleMarkAllRead = async () => {
-    if (!user) return;
+    if (!user || !user.token) return;
     try {
       await fetch('/api/notifications/mark-all-as-read', {
         method: 'POST',
@@ -108,8 +111,9 @@ const NotificationBell: React.FC = () => {
           {unreadCount}
         </span>
       )}
-      {isOpen && 
+      {isOpen && user &&
         <NotificationPopup 
+          user={user}
           onClose={() => setIsOpen(false)} 
           onNotificationClick={handleNotificationClick}
           onMarkAllRead={handleMarkAllRead}

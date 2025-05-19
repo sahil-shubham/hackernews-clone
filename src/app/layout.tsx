@@ -4,7 +4,6 @@ import { ThemeProvider } from '@/styles/theme-provider'
 import './globals.css'
 import HeaderWrapper from '@/components/Header'
 import { getServerSideUser } from '@/lib/authUtils'
-import StoreInitializer from '@/components/StoreInitializer'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -31,9 +30,8 @@ export default async function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
-        <StoreInitializer serverUser={serverUser} />
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
-          <HeaderWrapper />
+          <HeaderWrapper user={serverUser} />
           <main>{children}</main>
         </ThemeProvider>
       </body>

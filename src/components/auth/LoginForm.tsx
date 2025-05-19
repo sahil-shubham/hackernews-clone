@@ -28,9 +28,8 @@ const LoginForm: React.FC = () => {
       setError('');
       
       await login(emailOrUsername, password);
-      
-      // Redirect to home page after successful login
       router.push('/');
+      router.refresh();
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);

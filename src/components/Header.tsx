@@ -1,72 +1,41 @@
 'use client'
 
-import type React from 'react' // Keep if you use React types explicitly, else Next.js usually handles it.
-// import { useState, useRef, useEffect, Suspense } from "react";
+import type React from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Check, Sun, Moon } from 'lucide-react' // V0 uses these
+import { Search, Check, Sun, Moon } from 'lucide-react'
 import { useTheme } from 'next-themes'
-import { useAuthStore } from '@/hooks/useAuthStore'
+import { User } from '@/lib/authUtils';
 import { useAuthAPI } from '@/hooks/useAuthAPI'
 import NotificationBell from '@/components/notifications/NotificationBell'
 import { Suspense } from 'react'
 
-const HeaderComponent = () => {
+interface HeaderComponentProps {
+  user: User | null;
+}
+
+const HeaderComponent: React.FC<HeaderComponentProps> = ({ user }) => {
   const router = useRouter()
-  const { user } = useAuthStore()
   const { logout } = useAuthAPI()
   const searchParams = useSearchParams()
   const currentSort = searchParams.get('sort') || 'new'
-  const currentSearchQuery = searchParams.get('search') || '' // For search page persistence
+  const currentSearchQuery = searchParams.get('search') || ''
 
-  // const [isSearchOpen, setIsSearchOpen] = useState(false);
-  // const [searchValue, setSearchValue] = useState(currentSearchQuery);
-  // const [mounted, setMounted] = useState(false);
-  // const searchInputRef = useRef<HTMLInputElement>(null);
   const { theme, setTheme } = useTheme()
-
-  // useEffect(() => {
-  //   setMounted(true);
-  // }, []);
-
-  // useEffect(() => {
-  //   if (isSearchOpen && searchInputRef.current) {
-  //     searchInputRef.current.focus();
-  //   }
-  // }, [isSearchOpen]);
-
-  // const handleSearchToggle = () => {
-  //   setIsSearchOpen(!isSearchOpen);
-  //   if (isSearchOpen) { // If it was just closed, clear search value, else focus
-  //     setSearchValue("");
-  //   } else {
-  //     setTimeout(() => {
-  //       searchInputRef.current?.focus();
-  //     }, 100); // Ensure input is visible before focus
-  //   }
-  // };
-
-  // const handleSearchSubmit = (e: React.FormEvent) => {
-  //   e.preventDefault();
-  //   if (!searchValue.trim()) return; // Don't search if empty
-  //   router.push(`/search?query=${encodeURIComponent(searchValue)}&page=1&sort=${currentSort}`);
-  //   setIsSearchOpen(false); // Close search bar after submitting
-  // };
 
   const handleSortChange = (newSort: string) => {
     const params = new URLSearchParams(searchParams.toString())
     params.set('sort', newSort)
-    params.set('page', '1') // Reset to page 1 on sort change
+    params.set('page', '1')
 
     const pathname = window.location.pathname
     if (pathname.startsWith('/search')) {
-      // Preserve current search query if on search page
       if (currentSearchQuery) params.set('search', currentSearchQuery)
       else params.delete('search')
       router.push(`/search?${params.toString()}`)
     } else {
-      params.delete('search') // Remove search from params if on homepage/other pages
+      params.delete('search')
       router.push(`/?${params.toString()}`)
     }
   }
@@ -77,15 +46,9 @@ const HeaderComponent = () => {
     { id: 'best', label: 'Best' }
   ]
 
-  // Styles from V0 for the main header bar (bg-[#ff6600] is approx. theme primary)
-  // We use bg-primary as defined in tailwind.config.js which links to HSL var(--primary)
-  // text-primary-foreground for text on primary background
-
   return (
     <header className="bg-primary text-primary-foreground">
       <div className="container mx-auto px-4 max-w-5xl flex items-center justify-between h-14">
-        {' '}
-        {/* V0 uses max-w-5xl. Original HeaderContent was 1280px (~max-w-7xl) */}
         <div className="flex items-center justify-between h-14">
           <Link
             href="/"
@@ -130,7 +93,7 @@ const HeaderComponent = () => {
 
           {user ? (
             <>
-              <NotificationBell />
+              <NotificationBell user={user} />
               <span className="text-sm font-medium hidden sm:inline">{user.username}</span>
               <button
                 onClick={logout}
@@ -180,14 +143,14 @@ const HeaderComponent = () => {
   )
 }
 
-// Wrapper component to ensure Suspense is used correctly if HeaderComponent has issues with it internally.
-// The V0 example does not use Suspense here, assuming Header is a full client component.
-export default function HeaderWrapper() {
+interface HeaderWrapperProps {
+  user: User | null;
+}
+
+export default function HeaderWrapper({ user }: HeaderWrapperProps) {
   return (
     <Suspense fallback={<div className="h-[104px] bg-primary" />}>
-      {' '}
-      {/* Placeholder for header height during suspense */}
-      <HeaderComponent />
+      <HeaderComponent user={user} />
     </Suspense>
   )
 }
