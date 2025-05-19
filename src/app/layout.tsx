@@ -1,41 +1,37 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import { AuthProvider } from "@/hooks/useAuth";
-import HeaderWrapper from "@/components/Header";
-import Providers from "@/providers";
+import type { Metadata } from 'next'
+import { Geist, Geist_Mono } from 'next/font/google'
+import { ThemeProvider } from '@/styles/theme-provider'
+import './globals.css'
+import HeaderWrapper from '@/components/Header'
 
 const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+  variable: '--font-geist-sans',
+  subsets: ['latin']
+})
 
 const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+  variable: '--font-geist-mono',
+  subsets: ['latin']
+})
 
 export const metadata: Metadata = {
-  title: "Hacker News Clone",
-  description: "A Hacker News clone built with Next.js",
-};
+  title: 'Hacker News Clone',
+  description: 'A Hacker News clone built with Next.js'
+}
 
 export default function RootLayout({
-  children,
+  children
 }: Readonly<{
-  children: React.ReactNode;
+  children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
-        <Providers>
-          <AuthProvider>
-            <HeaderWrapper />
-            <main>
-              {children}
-            </main>
-          </AuthProvider>
-        </Providers>
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+          <HeaderWrapper />
+          <main>{children}</main>
+        </ThemeProvider>
       </body>
     </html>
-  );
+  )
 }
