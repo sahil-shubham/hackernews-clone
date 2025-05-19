@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 // DELETE /api/bookmarks/[id] - Delete a bookmark
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getServerSideUser();
@@ -13,8 +13,8 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const bookmarkId = params.id;
-    if (!bookmarkId) {
+    const { id } = await params;
+    if (!id) {
       return NextResponse.json(
         { error: "Bookmark ID is required" },
         { status: 400 }
@@ -24,7 +24,7 @@ export async function DELETE(
     // Check if bookmark exists and belongs to the user
     const bookmark = await prisma.bookmark.findUnique({
       where: {
-        id: bookmarkId,
+        id,
         userId: user.id,
       },
     });
@@ -39,7 +39,7 @@ export async function DELETE(
     // Delete bookmark
     await prisma.bookmark.delete({
       where: {
-        id: bookmarkId,
+        id,
       },
     });
 
