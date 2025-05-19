@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuthAPI } from '@/hooks/useAuthAPI';
 import { useRouter } from 'next/navigation';
 import * as Styled from "@/styles/components"
 
@@ -11,7 +11,7 @@ const LoginForm: React.FC = () => {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const { login } = useAuth();
+  const { login } = useAuthAPI();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {

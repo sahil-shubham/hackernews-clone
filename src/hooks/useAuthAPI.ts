@@ -1,5 +1,6 @@
 'use client'
 
+import { redirect } from 'next/navigation'
 import { useAuthStore } from './useAuthStore'
 
 export const useAuthAPI = () => {
@@ -44,6 +45,7 @@ export const useAuthAPI = () => {
   // If there were a server-side endpoint to invalidate a session, it would be called here.
   const logout = () => {
     setUser(null)
+    redirect('/')
   }
 
   return {

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuthStore } from '@/hooks/useAuthStore';
 import { useRouter } from 'next/navigation';
 import * as Styled from '@/styles/components'
 
@@ -16,7 +16,7 @@ export default function CommentForm({
   onAddComment,
   placeholder = 'What are your thoughts?'
 }: CommentFormProps) {
-  const { user } = useAuth();
+  const user = useAuthStore((state) => state.user);
   const router = useRouter();
   
   const [comment, setComment] = useState('');

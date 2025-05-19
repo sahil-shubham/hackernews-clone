@@ -11,7 +11,7 @@ interface PostListProps {
 }
 
 export default function PostList({ posts, loading = false, onVote }: PostListProps) {
-  const { user } = useAuth();
+  const user = useAuthStore((state) => state.user);
 
   if (loading) {
     return (

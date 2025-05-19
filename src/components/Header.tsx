@@ -1,12 +1,13 @@
 "use client";
 import Link from "next/link";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuthStore } from "@/hooks/useAuthStore";
+import { useAuthAPI } from "@/hooks/useAuthAPI";
 import styled from "styled-components";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useRef, useEffect, Suspense } from "react";
+import { Suspense } from "react";
 import NotificationBell from "@/components/notifications/NotificationBell";
 
-// Placeholder for a search icon, replace with actual SVG or icon component
+// Placeholder for a search icon, kept for now, but its toggle is removed
 const SearchIconPlaceholder = () => (
   <svg
     data-testid="geist-icon"
@@ -93,66 +94,6 @@ const LogoutButton = styled.button`
   }
 `;
 
-// New Styled Components for Search
-const SearchToggleContainer = styled.div`
-  display: flex;
-  align-items: center;
-  position: relative;
-`;
-
-const SearchInputContainer = styled.div<{ isOpen: boolean }>`
-  display: ${(props) => (props.isOpen ? "flex" : "none")};
-  align-items: center;
-  background-color: ${(props) => props.theme.colors.white};
-  border: 1px solid ${(props) => props.theme.colors.secondaryLight};
-  border-radius: ${(props) => props.theme.radii.md};
-  padding: ${(props) => props.theme.space.xs} ${(props) => props.theme.space.sm};
-  position: absolute;
-  right: 30px;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 10;
-  width: 250px;
-  box-shadow: ${(props) => props.theme.shadows.md};
-
-  form {
-    display: flex;
-    width: 100%;
-    align-items: center;
-  }
-`;
-
-const InlineSearchInput = styled.input`
-  flex-grow: 1;
-  border: none;
-  outline: none;
-  font-size: ${(props) => props.theme.fontSizes.sm};
-  padding: ${(props) => props.theme.space.xs};
-  color: ${(props) => props.theme.colors.secondaryDark};
-  background-color: transparent;
-  margin-right: ${(props) => props.theme.space.xs};
-
-  &::placeholder {
-    color: ${(props) => props.theme.colors.secondary};
-  }
-`;
-
-const ClearSearchButton = styled.button`
-  background: transparent;
-  border: none;
-  color: ${(props) => props.theme.colors.secondary};
-  cursor: pointer;
-  padding: ${(props) => props.theme.space.xs};
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: ${(props) => props.theme.fontSizes.md};
-
-  &:hover {
-    color: ${(props) => props.theme.colors.secondaryDark};
-  }
-`;
-
 // Moved and new Tab Components
 const TabsBarContainer = styled.div`
   background-color: ${(props) => props.theme.colors.white};
@@ -189,68 +130,25 @@ const SortTab = styled.button<{ active: boolean }>`
 `;
 
 const Header = () => {
-  const { user, logout } = useAuth();
+  const { user } = useAuthStore();
+  const { logout } = useAuthAPI();
   const router = useRouter();
   const searchParams = useSearchParams();
   const currentSort = searchParams.get("sort") || "new";
-
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState(
-    searchParams.get("search") || ""
-  );
-  const searchInputRef = useRef<HTMLInputElement>(null);
-
-  const handleSearchToggle = () => {
-    const newIsOpen = !isSearchOpen;
-    setIsSearchOpen(newIsOpen);
-    if (!newIsOpen && !searchTermFromUrl) {
-      setSearchTerm("");
-    }
-  };
-
-  const searchTermFromUrl = searchParams.get("search") || "";
-  useEffect(() => {
-    if (searchTerm !== searchTermFromUrl) {
-      setSearchTerm(searchTermFromUrl);
-    }
-  }, [searchTermFromUrl]);
-
-  useEffect(() => {
-    if (isSearchOpen && searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
-  }, [isSearchOpen]);
-
-  const handleSearchSubmit = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    const trimmedSearchTerm = searchTerm.trim();
-    if (trimmedSearchTerm) {
-      const currentParams = new URLSearchParams(searchParams.toString());
-      currentParams.set("search", trimmedSearchTerm);
-      currentParams.set("page", "1");
-      router.push(`/?${currentParams.toString()}`);
-      // setIsSearchOpen(false); // Keep search open to see the term and clear button
-    } else {
-      handleClearSearch();
-    }
-  };
-
-  const handleClearSearch = () => {
-    setSearchTerm("");
-    const currentParams = new URLSearchParams(searchParams.toString());
-    currentParams.delete("search");
-    currentParams.set("page", "1");
-    router.push(`/?${currentParams.toString()}`);
-    if (searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
-  };
 
   const handleSortChange = (newSort: string) => {
     const currentParams = new URLSearchParams(searchParams.toString());
     currentParams.set("sort", newSort);
     currentParams.set("page", "1");
-    router.push(`/?${currentParams.toString()}`);
+    // If on the search page, preserve the query; otherwise, go to homepage
+    const pathname = window.location.pathname;
+    if (pathname === '/search') {
+        router.push(`/search?${currentParams.toString()}`);
+    } else {
+        // If there was a search term on homepage, remove it when changing sort
+        currentParams.delete("search"); 
+        router.push(`/?${currentParams.toString()}`);
+    }
   };
 
   return (
@@ -260,56 +158,13 @@ const Header = () => {
           <NavLinks>
             <Logo href="/">Hacker News</Logo>
             <NavLink href="/submit">submit</NavLink>
+            <NavLink href="/search">search</NavLink>
           </NavLinks>
 
           <UserSection>
-            <SearchToggleContainer>
-              {!isSearchOpen && (
-                <div
-                  onClick={handleSearchToggle}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    cursor: "pointer",
-                  }}
-                >
-                  <SearchIconPlaceholder />
-                </div>
-              )}
-              <SearchInputContainer isOpen={isSearchOpen}>
-                <form onSubmit={handleSearchSubmit}>
-                  <InlineSearchInput
-                    ref={searchInputRef}
-                    type="text"
-                    placeholder="Search..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    onBlur={() => {
-                      setTimeout(() => {
-                        if (
-                          !searchInputRef.current?.contains(
-                            document.activeElement
-                          ) &&
-                          !searchTerm &&
-                          !searchTermFromUrl
-                        ) {
-                          setIsSearchOpen(false);
-                        }
-                      }, 100);
-                    }}
-                  />
-                  {searchTerm && (
-                    <ClearSearchButton
-                      type="button"
-                      onClick={handleClearSearch}
-                      aria-label="Clear search"
-                    >
-                      &times;
-                    </ClearSearchButton>
-                  )}
-                </form>
-              </SearchInputContainer>
-            </SearchToggleContainer>
+            <Link href="/search" passHref aria-label="Search page">
+                <SearchIconPlaceholder />
+            </Link>
 
             {user ? (
               <>

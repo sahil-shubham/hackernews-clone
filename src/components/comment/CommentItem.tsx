@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuthStore } from '@/hooks/useAuthStore';
 import styled from 'styled-components';
 
 export interface Comment {
@@ -135,7 +135,7 @@ export default function CommentItem({
   depth = 0,
   maxDepth = 5
 }: CommentItemProps) {
-  const { user } = useAuth();
+  const user = useAuthStore((state) => state.user);
   const [isReplying, setIsReplying] = useState(false);
   const [replyText, setReplyText] = useState('');
   const [isSubmittingReply, setIsSubmittingReply] = useState(false);
