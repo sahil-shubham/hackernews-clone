@@ -208,11 +208,11 @@ export default function PostDetailPageClient({
   // The JSX from the original page.tsx will be moved here and adapted.
   // For brevity, this is a simplified structure.
   return (
-    <PageContainer className="py-8">
+    <PageContainer className="py-8 max-w-5xl">
       <article className="bg-card p-4 sm:p-6 rounded-lg shadow-md mb-8 border border-border">
-        <Heading as="h1" className="text-2xl sm:text-3xl font-bold mb-2 break-words">
+        <h1 className="text-2xl sm:text-3xl font-bold mb-2 break-words">
           {post.title}
-        </Heading>
+        </h1>
 
         {post.url && (
           <a 
@@ -261,11 +261,9 @@ export default function PostDetailPageClient({
       {!effectiveUser && <Text className="mb-8 text-center text-muted-foreground">Please <Link href={`/login?next=/post/${postId}`} className="text-primary hover:underline">login</Link> to comment.</Text>}
 
       <section className="bg-card p-4 sm:p-6 rounded-lg shadow-md border border-border">
-        <header className="mb-6">
-          <Heading as="h2" className="text-xl sm:text-2xl font-semibold">
-            Comments {comments.length > 0 && `(${comments.length})`}
-          </Heading>
-        </header>
+        <h2 className="text-xl sm:text-2xl font-semibold">
+          Comments {comments.length > 0 && `(${comments.length})`}
+        </h2>
 
         {actionError && !isSubmittingComment && (
           <ErrorText className="mb-4">{actionError}</ErrorText>
