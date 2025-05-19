@@ -1,8 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, startTransition } from 'react'
 import { Bookmark, BookmarkCheck } from 'lucide-react'
+import { toast } from 'sonner'
 import { User } from '@/lib/authUtils'
+import {
+  getBookmarkByPostIdAction,
+  createBookmarkAction,
+  deleteBookmarkAction,
+} from '@/app/actions/bookmarkActions'
 
 interface BookmarkButtonProps {
   postId: string
@@ -29,41 +35,23 @@ const BookmarkButton: React.FC<BookmarkButtonProps> = ({
     setIsPending(true)
     try {
       if (isBookmarked) {
-        // First, get the bookmark ID for this post
-        const bookmarkResponse = await fetch(`/api/bookmarks?postId=${postId}`)
-        if (!bookmarkResponse.ok) {
-          throw new Error('Failed to fetch bookmark')
-        }
-        const bookmarkData = await bookmarkResponse.json()
-        
-        if (!bookmarkData.bookmark?.id) {
-          throw new Error('Bookmark not found')
+        const existingBookmark = await getBookmarkByPostIdAction(postId)
+
+        if (!existingBookmark?.id) {
+          console.warn('Attempted to delete a bookmark not found on server. Syncing state.')
+          setIsBookmarked(false)
+          onBookmarkChange?.(false)
+          return
         }
 
-        const response = await fetch(`/api/bookmarks/${bookmarkData.bookmark.id}`, {
-          method: 'DELETE',
-        })
-
-        if (!response.ok) {
-          throw new Error('Failed to remove bookmark')
-        }
+        await deleteBookmarkAction(existingBookmark.id)
       } else {
-        // Create bookmark
-        const response = await fetch('/api/bookmarks', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ postId }),
-        })
-
-        if (!response.ok) {
-          throw new Error('Failed to add bookmark')
-        }
+        await createBookmarkAction(postId)
       }
 
-      setIsBookmarked(!isBookmarked)
-      onBookmarkChange?.(!isBookmarked)
+      const newIsBookmarked = !isBookmarked
+      setIsBookmarked(newIsBookmarked)
+      onBookmarkChange?.(newIsBookmarked)
     } catch (error) {
       console.error('Error toggling bookmark:', error)
     } finally {
@@ -71,11 +59,58 @@ const BookmarkButton: React.FC<BookmarkButtonProps> = ({
     }
   }
 
+  const handleBookmarkWithTransition = () => {
+    if (!user) {
+      console.warn('User not logged in. Bookmark attempt blocked.')
+      toast.error('Please log in to bookmark posts.')
+      return
+    }
+    startTransition(async () => {
+      setIsPending(true)
+      try {
+        if (isBookmarked) {
+          const existingBookmark = await getBookmarkByPostIdAction(postId)
+          if (!existingBookmark?.id) {
+            console.warn('Attempted to delete a bookmark not found on server. Syncing state.')
+            setIsBookmarked(false)
+            onBookmarkChange?.(false)
+            setIsPending(false)
+            return
+          }
+          await deleteBookmarkAction(existingBookmark.id)
+          toast.success('Bookmark removed')
+        } else {
+          await createBookmarkAction(postId)
+          toast.success('Bookmark added')
+        }
+        const newIsBookmarked = !isBookmarked
+        setIsBookmarked(newIsBookmarked)
+        onBookmarkChange?.(newIsBookmarked)
+      } catch (error) {
+        console.error('Error toggling bookmark:', error)
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred'
+        if (errorMessage === 'Bookmark already exists') {
+          toast.info('Post is already bookmarked.')
+          if (!isBookmarked) {
+            setIsBookmarked(true)
+            onBookmarkChange?.(true)
+          }
+        } else if (errorMessage.includes('Unauthorized')) {
+          toast.error('Authentication error. Please log in again.')
+        } else {
+          toast.error(`Failed to toggle bookmark: ${errorMessage}`)
+        }
+      } finally {
+        setIsPending(false)
+      }
+    })
+  }
+
   const focusRingClass = 'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 rounded'
 
   return (
     <button
-      onClick={handleBookmark}
+      onClick={handleBookmarkWithTransition}
       disabled={!user || isPending}
       className={`p-1.5 rounded-full transition-colors ${focusRingClass} ${
         isBookmarked
