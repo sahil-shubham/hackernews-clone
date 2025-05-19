@@ -12,8 +12,8 @@ The API design distinguishes between two main types of backend operations:
     *   **Notifications (`src/app/api/notifications/`):** Endpoints for fetching user notifications, marking them as read, etc.
     
 2.  **Core Application Logic (Next.js Server Actions):**
-    *   Located in `src/app/actions/` (e.g., `replyActions.ts`, `voteActions.ts`).
-    *   Server Actions are used for most of the core application functionalities like creating posts, submitting comments, and casting votes.
+    *   Located in `src/app/actions/` (e.g., `replyActions.ts`, `voteActions.ts`, `bookmarkActions.ts`).
+    *   Server Actions are used for most of the core application functionalities like creating posts, submitting comments, casting votes, and managing bookmarks.
     *   **Direct Prisma Interaction:** These actions typically import the Prisma client directly and perform database operations.
     *   **Simplified Data Flow:** This approach allows Server Components to call these asynchronous functions directly, reducing boilerplate and the need for manual `fetch` calls for many CRUD operations.
 

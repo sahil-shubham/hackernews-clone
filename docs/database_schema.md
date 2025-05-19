@@ -218,6 +218,40 @@ model Notification {
 *   **Indexes:**
     *   `@@index([recipientId, read, createdAt])`: This composite index is crucial for efficiently fetching notifications for a specific user, allowing filtering by `read` status and ordering by `createdAt`. This is very common for displaying a user's notification feed (e.g., unread notifications first, then by date).
 
+#### 6. `Bookmark` Model
+
+Represents a user's bookmark on a specific post.
+
+```prisma
+model Bookmark {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId]) // A user can only bookmark a post once
+  @@index([userId])          // Efficiently fetch all bookmarks for a user
+  @@index([postId])          // Efficiently fetch all bookmarks for a post (less common, but possible)
+  @@map("bookmarks")
+}
+```
+
+*   **Key Fields:** `id`, `createdAt`, `updatedAt`.
+*   **Purpose:** Allows users to save or "bookmark" posts for later viewing.
+*   **Relations:**
+    *   Many-to-one with `User` (a bookmark belongs to one user).
+    *   Many-to-one with `Post` (a bookmark is for one post).
+    *   `onDelete: Cascade` ensures that if a user or a post is deleted, their associated bookmarks are also deleted.
+*   **Indexes & Constraints:**
+    *   `@@unique([userId, postId])`: This is a critical constraint ensuring that a user can bookmark a specific post only once. The `createBookmarkAction` also checks for this to provide a user-friendly error.
+    *   `@@index([userId])`: Optimizes queries for fetching all posts bookmarked by a particular user (e.g., for a "My Bookmarks" page). The `getBookmarkByPostIdAction` uses this implicitly when combined with `postId` for its lookup.
+    *   `@@index([postId])`: Could be useful for analytics, like finding out how many users have bookmarked a particular post, though not directly used by the current `bookmarkActions.ts` for primary operations.
+
 ### Enums
 
 Enums define a set of named constants, improving data integrity and readability.

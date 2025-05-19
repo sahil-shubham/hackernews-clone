@@ -1,6 +1,9 @@
 # Hackernews Clone
 
-This project is a full-stack clone of Hackernews, developed as a take-home assignment that aims to replicate core Hackernews functionalities, including user authentication, post creation, commenting, voting, and notifications. For detailed documentation, including project architecture, database schema, deployment, and more, please see the [**Full Documentation in the /docs folder**](./docs/README.md).
+
+This project is a full-stack clone of Hackernews, developed as a take-home assignment that aims to replicate core Hackernews functionalities and more. For detailed documentation, including project architecture, database schema, deployment, and more, please see the [Full Documentation in the /docs folder](./docs/README.md).
+
+You can checkout the **Live Demo:** [here](https://spc.sahil-shubham.in/)
 
 ## Prerequisites
 

@@ -1,6 +1,6 @@
 # Hackernews Clone - Detailed Documentation
 
-Welcome to the detailed documentation for the Hackernews Clone project. This project is a full-stack application built with Next.js, Prisma, PostgreSQL, and other modern web technologies.
+Welcome to the detailed documentation for the Hackernews Clone project. This project is a full-stack application built with Next.js, Prisma, PostgreSQL, and other modern web technologies, aiming to replicate core Hackernews functionalities including user authentication, post creation and discovery, commenting, voting, bookmarking, and notifications.
 
 ## Table of Contents
 
@@ -40,13 +40,14 @@ Understanding the layout of the repository is key to navigating the project. Her
 │   ├── app/                  # Next.js App Router directory
 │   │   ├── (page routes)     # Page components and layouts
 │   │   ├── api/              # API route handlers (e.g., auth, notifications)
-│   │   └── actions/          # Server Actions for backend logic (e.g., votes, replies)
+│   │   └── actions/          # Server Actions for backend logic (e.g., votes, replies, bookmarks)
 │   ├── components/           # Reusable UI components (client and server)
 │   │   ├── auth/
 │   │   ├── common/
 │   │   ├── layout/
 │   │   ├── notifications/
 │   │   ├── post/
+│   │   ├── bookmark/         # Components related to bookmarking
 │   │   └── ui/               # ui components
 │   ├── hooks/                # Custom React hooks
 │   ├── lib/                  # Utility functions, libraries, and Prisma client instance
@@ -68,7 +69,7 @@ Understanding the layout of the repository is key to navigating the project. Her
 
 ### Key Highlights:
 
-*   **`/src/app`**: Core of the Next.js application, using the App Router. Business logic is split between API Routes (`/src/app/api`) for session/notification management and Server Actions (`/src/app/actions`) for most other CRUD operations directly interacting with Prisma.
+*   **`/src/app`**: Core of the Next.js application, using the App Router. Business logic is split between API Routes (`/src/app/api`) for session/notification management and Server Actions (`/src/app/actions`) for most other CRUD operations (posts, comments, votes, bookmarks) directly interacting with Prisma.
 *   **`/prisma`**: Contains `schema.prisma`, the single source of truth for your database schema. Migrations are managed here.
 *   **`/scripts`**: Contains standalone scripts for tasks like database seeding and fetching external data.
 *   **`Dockerfile` & `docker-compose.yml`**: Enable containerized development and deployment, ensuring consistency across environments.
