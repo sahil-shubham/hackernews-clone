@@ -85,7 +85,7 @@ const UserProfileClient: React.FC<UserProfileClientProps> = ({
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
+    <div className="container mx-auto px-4 py-8 max-w-5xl">
       <h1 className="text-3xl font-bold mb-2">{profileUser.username}</h1>
       {/* TODO: Add more user profile details here, e.g., join date, karma, etc. */}
       <p className="text-muted-foreground mb-6">Posts by {profileUser.username}:</p>
