@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import CommentItem, { Comment } from './CommentItem';
+import CommentItem from './CommentItem';
+import type { Comment } from '@/types/comment';
 import styled from 'styled-components';
 
 interface CommentListProps {

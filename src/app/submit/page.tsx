@@ -2,12 +2,12 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '@/hooks/useAuth'
+import { useAuthStore } from '@/hooks/useAuthStore'
 import * as Styled from '@/styles/components'
 
 export default function SubmitPage() {
   const router = useRouter()
-  const { user, token } = useAuth()
+  const  user = useAuthStore((state) => state.user)
 
   const [title, setTitle] = useState('')
   const [url, setUrl] = useState('')
@@ -48,7 +48,7 @@ export default function SubmitPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
+          Authorization: `Bearer ${user!.token}`
         },
         body: JSON.stringify({
           title,

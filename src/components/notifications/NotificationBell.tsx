@@ -1,6 +1,8 @@
+'use client';
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import styled from 'styled-components';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuthStore } from '@/hooks/useAuthStore';
 import NotificationPopup from './NotificationPopup';
 import type { ApiNotification } from './NotificationPopup'; // Import the type
 import { useRouter } from 'next/navigation'; // For navigation
@@ -55,17 +57,16 @@ const UnreadBadge = styled.span`
 const NotificationBell: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-  const { user, token } = useAuth();
+  const user = useAuthStore((state) => state.user)
   const router = useRouter();
   const bellRef = useRef<HTMLDivElement>(null);
 
   const fetchUnreadCount = useCallback(async () => {
-    if (!token) return;
     try {
       // Fetch all notifications and count unread ones client-side for simplicity here.
       // For performance, you could have a dedicated API endpoint for unread count.
       const response = await fetch('/api/notifications?limit=100', { // Fetch a decent number to count
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${user?.token}` },
       });
       if (response.ok) {
         const data = await response.json();
@@ -75,7 +76,7 @@ const NotificationBell: React.FC = () => {
     } catch (error) {
       console.error('Failed to fetch unread count:', error);
     }
-  }, [token]);
+  }, [user]);
 
   useEffect(() => {
     if (user) {
@@ -107,13 +108,12 @@ const NotificationBell: React.FC = () => {
   };
 
   const handleNotificationClick = async (notification: ApiNotification) => {
-    if (!token) return;
     try {
       // Mark as read
       if (!notification.read) {
         await fetch(`/api/notifications/${notification.id}`, {
           method: 'PATCH',
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { Authorization: `Bearer ${user?.token}` },
         });
         fetchUnreadCount(); // Refresh unread count
       }
@@ -131,11 +131,10 @@ const NotificationBell: React.FC = () => {
   };
 
   const handleMarkAllRead = async () => {
-    if (!token) return;
     try {
       await fetch('/api/notifications/mark-all-as-read', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${user?.token}` },
       });
       fetchUnreadCount(); // Refresh unread count
       // The popup will refetch its own list

@@ -1,6 +1,8 @@
+'use client';
+
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
-import { useAuth } from '@/hooks/useAuth'; // Assuming you have this hook
+import { useAuthStore } from '@/hooks/useAuthStore'; // Assuming you have this hook
 import { formatDistanceToNow } from 'date-fns'; // For relative time
 
 // Types (could be imported from a shared types file or API schema later)
@@ -110,7 +112,7 @@ const EmptyState = styled.div`
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: ${props => props.theme.space.xl};
+  /* padding: ${props => props.theme.space.xl}; */
   text-align: center;
   color: ${props => props.theme.colors.secondary};
   height: 100%;
@@ -153,16 +155,15 @@ const NotificationPopup: React.FC<NotificationPopupProps> = ({ onClose, onNotifi
   const [activeTab, setActiveTab] = useState<'inbox' | 'archive' | 'comments'>('inbox');
   const [notifications, setNotifications] = useState<ApiNotification[]>([]);
   const [loading, setLoading] = useState(false);
-  const { token } = useAuth();
+  const user = useAuthStore((state) => state.user)
 
   const fetchNotifications = useCallback(async () => {
-    if (!token) return;
     setLoading(true);
     try {
       // In a real app, you might filter by read status on the backend
       // For now, we fetch all and filter client-side based on tab for simplicity
       const response = await fetch('/api/notifications?limit=50', { // Fetch more for client-side tab filtering
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${user?.token}` },
       });
       if (!response.ok) throw new Error('Failed to fetch notifications');
       const data = await response.json();
@@ -173,7 +174,7 @@ const NotificationPopup: React.FC<NotificationPopupProps> = ({ onClose, onNotifi
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [user]);
 
   useEffect(() => {
     fetchNotifications();

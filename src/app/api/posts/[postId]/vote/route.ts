@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
+import { voteSchema } from '@/lib/schemas/vote';
 import { prisma } from '@/lib/prisma';
-import redis from '@/lib/redis'; // Import the Redis client
+// import redis from '@/lib/redis'; // Import the Redis client
 
-// Validate vote type input
-const voteSchema = z.object({
-  voteType: z.enum(['UPVOTE', 'DOWNVOTE']),
-});
 
 type Params = Promise<{ postId: string }>
 

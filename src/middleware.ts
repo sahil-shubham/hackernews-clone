@@ -5,7 +5,6 @@ import { z } from 'zod';
 const authPaths = [
   '/api/posts',
   '/api/comments',
-  '/api/auth/me',
   '/api/notifications',
 ];
 

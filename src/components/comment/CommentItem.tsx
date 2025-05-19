@@ -4,24 +4,12 @@ import React, { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuthStore } from '@/hooks/useAuthStore';
 import styled from 'styled-components';
-
-export interface Comment {
-  id: string;
-  textContent: string;
-  author: {
-    id: string;
-    username: string;
-  };
-  createdAt: string | Date;
-  points: number;
-  voteType?: 'UPVOTE' | 'DOWNVOTE' | null;
-  hasVoted?: boolean | null;
-  replies?: Comment[];
-}
+import type { Comment } from '@/types/comment';
+import type { Vote } from '@/types/vote';
 
 interface CommentItemProps {
   comment: Comment;
-  onVote?: (commentId: string, voteType: 'UPVOTE' | 'DOWNVOTE') => Promise<void>;
+  onVote?: (commentId: string, voteType: Vote['voteType']) => Promise<void>;
   onReply?: (commentId: string, text: string) => Promise<void>;
   depth?: number;
   maxDepth?: number;
@@ -142,7 +130,7 @@ export default function CommentItem({
   
   const timeAgo = formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true });
   
-  const handleVote = async (voteType: 'UPVOTE' | 'DOWNVOTE') => {
+  const handleVote = async (voteType: Vote['voteType']) => {
     if (!user || !onVote) return;
     await onVote(comment.id, voteType);
   };

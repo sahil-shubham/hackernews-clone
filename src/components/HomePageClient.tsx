@@ -134,7 +134,7 @@ export default function HomePageClient({
   }
 
   return (
-    <div className="container mx-auto px-4 py-lg max-w-4xl">
+    <div className="container mx-auto px-4 py-lg max-w-5xl">
       {error && !initialError &&
         <div role="alert" className="bg-destructive/10 border border-destructive text-destructive p-md rounded-md mb-lg">
           {error}

@@ -1,3 +1,4 @@
+'use client';
 // Styled components for post detail page
 import { Card } from "./Card";
 import { Heading } from "./Generics";

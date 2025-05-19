@@ -3,7 +3,8 @@
 import React, { useState } from 'react';
 import { useAuthAPI } from '@/hooks/useAuthAPI';
 import { useRouter } from 'next/navigation';
-import * as Styled from "@/styles/components"
+import { Heading, ErrorText } from '@/components/ui/typography';
+import { Button } from '@/components/ui/Button';
 
 const SignupForm: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -40,7 +41,6 @@ const SignupForm: React.FC = () => {
       
       await signup(email, username, password);
       
-      // Redirect to home page after successful signup
       router.push('/');
     } catch (err) {
       if (err instanceof Error) {
@@ -54,72 +54,76 @@ const SignupForm: React.FC = () => {
   };
 
   return (
-    <Styled.FormCard>
-      <Styled.Heading $level={2}>Sign Up</Styled.Heading>
-      <form onSubmit={handleSubmit}>
-        <Styled.FormGroup>
-          <Styled.Label htmlFor="email">
+    <div className="bg-card text-card-foreground shadow-xl rounded-lg p-6 sm:p-8 w-full max-w-md">
+      <Heading as="h2" className="text-2xl font-bold text-center mb-6">Sign Up</Heading>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div>
+          <label htmlFor="email" className="block text-sm font-medium text-foreground mb-1">
             Email
-          </Styled.Label>
-          <Styled.Input
+          </label>
+          <input
             id="email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
+            className="mt-1 block w-full px-3 py-2 bg-background border border-input rounded-md text-sm shadow-sm placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
           />
-        </Styled.FormGroup>
+        </div>
         
-        <Styled.FormGroup>
-          <Styled.Label htmlFor="username">
+        <div>
+          <label htmlFor="username" className="block text-sm font-medium text-foreground mb-1">
             Username
-          </Styled.Label>
-          <Styled.Input
+          </label>
+          <input
             id="username"
             type="text"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             required
+            className="mt-1 block w-full px-3 py-2 bg-background border border-input rounded-md text-sm shadow-sm placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
           />
-        </Styled.FormGroup>
+        </div>
         
-        <Styled.FormGroup>
-          <Styled.Label htmlFor="password">
+        <div>
+          <label htmlFor="password" className="block text-sm font-medium text-foreground mb-1">
             Password
-          </Styled.Label>
-          <Styled.Input
+          </label>
+          <input
             id="password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            className="mt-1 block w-full px-3 py-2 bg-background border border-input rounded-md text-sm shadow-sm placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
           />
-        </Styled.FormGroup>
+        </div>
         
-        <Styled.FormGroup>
-          <Styled.Label htmlFor="confirmPassword">
+        <div>
+          <label htmlFor="confirmPassword" className="block text-sm font-medium text-foreground mb-1">
             Confirm Password
-          </Styled.Label>
-          <Styled.Input
+          </label>
+          <input
             id="confirmPassword"
             type="password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
+            className="mt-1 block w-full px-3 py-2 bg-background border border-input rounded-md text-sm shadow-sm placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
           />
-        </Styled.FormGroup>
+        </div>
         
-        <Styled.Button 
+        <Button 
           type="submit" 
           disabled={isSubmitting}
-          $fullWidth
+          className="w-full"
         >
           {isSubmitting ? 'Signing up...' : 'Sign Up'}
-        </Styled.Button>
+        </Button>
         
-        {error && <Styled.ErrorText>{error}</Styled.ErrorText>}
+        {error && <ErrorText className="mt-4 text-center">{error}</ErrorText>}
       </form>
-    </Styled.FormCard>
+    </div>
   );
 };
 
