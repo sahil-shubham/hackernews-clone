@@ -1,30 +1,31 @@
 import { Suspense } from 'react';
-import { cookies } from 'next/headers';
+// import { cookies } from 'next/headers'; // No longer needed here directly
 import HomePageClient from '@/components/HomePageClient';
 import type { Post } from '@/types/post'; // Ensure Post type is available
-import type { User } from '@/hooks/useAuthStore'; // Ensure User type is available
+// import type { User } from '@/hooks/useAuthStore'; // User type will come via getServerSideUser
+import { getServerSideUser } from '@/lib/authUtils'; // Import the new utility
 
-// Helper function to get user from cookies (replace with your actual auth logic)
-async function getServerSideUser(): Promise<User | null> {
-  const cookieStore = await cookies(); // Remove await, cookies() is sync here
-  const tokenCookie = cookieStore.get('authToken');
-
-  if (tokenCookie?.value) {
-    try {
-      // SIMULATED: Replace with actual token verification and user data retrieval
-      return {
-        id: 'server-user-id',
-        username: 'ServerUser',
-        email: 'server@example.com',
-        token: tokenCookie.value,
-      };
-    } catch (error) {
-      console.error("Error processing token:", error);
-      return null;
-    }
-  }
-  return null;
-}
+// // Helper function to get user from cookies (replace with your actual auth logic)
+// async function getServerSideUser(): Promise<User | null> { // REMOVE THIS LOCAL DEFINITION
+//   const cookieStore = await cookies(); 
+//   const tokenCookie = cookieStore.get('authToken');
+// 
+//   if (tokenCookie?.value) {
+//     try {
+//       // SIMULATED: Replace with actual token verification and user data retrieval
+//       return {
+//         id: 'server-user-id',
+//         username: 'ServerUser',
+//         email: 'server@example.com',
+//         token: tokenCookie.value,
+//       };
+//     } catch (error) {
+//       console.error("Error processing token:", error);
+//       return null;
+//     }
+//   }
+//   return null;
+// }
 
 async function fetchPostsData(page: number, sort: string, searchQuery: string, userToken: string | null) {
   const queryParams = new URLSearchParams({
@@ -69,7 +70,7 @@ export default async function Page({ searchParams }: PageProps) {
   const sort = searchParams?.sort || 'new';
   const searchQuery = searchParams?.search || '';
 
-  const initialUser = await getServerSideUser();
+  const initialUser = await getServerSideUser(); // Uses the imported version
 
   let initialPosts: Post[] = [];
   let initialPagination = { page: 1, totalPages: 1, totalPosts: 0 };

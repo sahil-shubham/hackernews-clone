@@ -3,6 +3,7 @@ import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import * as jose from 'jose';
 import { prisma } from '@/lib/prisma';
+import { setAuthCookie } from '@/lib/authUtils';
 
 const loginSchema = z.object({
   emailOrUsername: z.string(),
@@ -81,6 +82,9 @@ export async function POST(request: NextRequest) {
       .setExpirationTime(Math.floor(Date.now() / 1000) + expirationTime)
       .sign(secretKey);
     
+    // Set the httpOnly cookie
+    setAuthCookie(token, expirationTime);
+
     return NextResponse.json({
       user: {
         id: user.id,

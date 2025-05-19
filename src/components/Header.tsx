@@ -8,15 +8,14 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Search, Check, Sun, Moon } from 'lucide-react' // V0 uses these
 import { useTheme } from 'next-themes'
 import { useAuthStore } from '@/hooks/useAuthStore'
-// import { useAuthAPI } from '@/hooks/useAuthAPI'
-// import NotificationBell from '@/components/notifications/NotificationBell'
+import { useAuthAPI } from '@/hooks/useAuthAPI'
+import NotificationBell from '@/components/notifications/NotificationBell'
 import { Suspense } from 'react'
-
 
 const HeaderComponent = () => {
   const router = useRouter()
   const { user } = useAuthStore()
-  // const { logout } = useAuthAPI()
+  const { logout } = useAuthAPI()
   const searchParams = useSearchParams()
   const currentSort = searchParams.get('sort') || 'new'
   const currentSearchQuery = searchParams.get('search') || '' // For search page persistence
@@ -131,15 +130,15 @@ const HeaderComponent = () => {
 
           {user ? (
             <>
-              {/* <NotificationBell /> */}
+              <NotificationBell />
               <span className="text-sm font-medium hidden sm:inline">{user.username}</span>
-              {/* <button
-                  onClick={logout}
-                  className="text-sm hover:underline relative group focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded px-1 py-1.5"
-                >
-                  logout
-                  <span className="absolute -bottom-0.5 left-0 w-0 h-0.5 bg-primary-foreground/70 transition-all group-hover:w-full"></span>
-                </button> */}
+              <button
+                onClick={logout}
+                className="text-sm relative group focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded px-1 py-1.5"
+              >
+                logout
+                <span className="absolute -bottom-0.5 left-0 w-0 h-0.5 bg-primary-foreground/70 transition-all group-hover:w-full"></span>
+              </button>
             </>
           ) : (
             <Link

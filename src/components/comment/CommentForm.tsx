@@ -12,6 +12,8 @@ interface CommentFormProps {
   onAddComment: (text: string) => Promise<void>;
   placeholder?: string;
   parentId?: string; // For replies, if this form is reused
+  isSubmitting?: boolean;
+  error?: string | null;
 }
 
 export default function CommentForm({ 

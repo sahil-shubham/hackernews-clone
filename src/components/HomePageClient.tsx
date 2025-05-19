@@ -15,33 +15,22 @@ interface HomePageClientProps {
     totalPosts: number;
   };
   initialError: string | null;
-  // We will also pass initialUser from server to help sync useAuthStore if needed
-  initialUser: User | null; 
+  initialUser: User | null; // This prop is still passed from page.tsx but not actively used for store sync here
 }
 
 export default function HomePageClient({
   initialPosts,
   initialPagination,
   initialError,
-  initialUser,
 }: HomePageClientProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { user, setUser: setAuthUser } = useAuthStore(); 
+  const { user } = useAuthStore(); // Removed setAuthUser, store is initialized globally
 
   const [posts, setPosts] = useState<Post[]>(initialPosts);
   const [loading, setLoading] = useState(false); 
   const [error, setError] = useState<string | null>(initialError);
   const [pagination, setPagination] = useState(initialPagination);
-
-  // Sync initialUser from server with Zustand store if needed, on mount
-  useEffect(() => {
-    if (initialUser && !user?.token) { // If server provides user and client store doesn't have one (or no token)
-      setAuthUser(initialUser);
-    }
-    // More sophisticated sync could be added if server/client states are expected to diverge often
-    // and need merging. For now, server can hydrate if client is empty.
-  }, [initialUser, user, setAuthUser]);
 
   const pageFromUrl = Number(searchParams.get('page') || '1');
   const sortFromUrl = searchParams.get('sort') || 'new';

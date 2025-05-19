@@ -1,10 +1,11 @@
 'use client'
 
-import { redirect } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { useAuthStore } from './useAuthStore'
 
 export const useAuthAPI = () => {
   const setUser = useAuthStore((store) => store.setUser)
+  const router = useRouter()
 
   const login = async (emailOrUsername: string, password: string) => {
     const response = await fetch('/api/auth/login', {
@@ -12,16 +13,15 @@ export const useAuthAPI = () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ emailOrUsername, password })
     })
-      .then((res) => res.json())
-      .then((data) => {
-        setUser(data)
-      })
-      .catch((error) => {
-        console.error('Login error:', error)
-        throw error
-      })
 
-    return response
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: 'Login failed' }))
+      throw new Error(errorData.message || 'Login failed')
+    }
+
+    const data = await response.json()
+    setUser(data.user ? { ...data.user, token: data.token } : null)
+    return data
   }
 
   const signup = async (email: string, username: string, password: string) => {
@@ -30,22 +30,25 @@ export const useAuthAPI = () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, username, password })
     })
-      .then((res) => res.json())
-      .then((data) => {
-        setUser(data)
-      })
-      .catch((error) => {
-        console.error('Signup error:', error)
-        throw error
-      })
 
-    return response
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: 'Signup failed' }))
+      throw new Error(errorData.message || 'Signup failed')
+    }
+    
+    const data = await response.json()
+    setUser(data.user ? { ...data.user, token: data.token } : null)
+    return data
   }
 
-  // If there were a server-side endpoint to invalidate a session, it would be called here.
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' })
+    } catch (error) {
+      console.error('Logout API call failed:', error)
+    }
     setUser(null)
-    redirect('/')
+    router.push('/')
   }
 
   return {

@@ -18,11 +18,9 @@ interface PostItemProps {
   post: PostType
   onVote: (postId: string, voteType: 'UPVOTE' | 'DOWNVOTE') => Promise<void> // Expects updated post or null
   index?: number
-  isExpanded: boolean
-  onToggleExpand: (postId: string) => void
 }
 
-const PostItem: React.FC<PostItemProps> = ({ post, onVote, index, isExpanded, onToggleExpand }) => {
+const PostItem: React.FC<PostItemProps> = ({ post, onVote, index }) => {
   const user = useAuthStore((state) => state.user)
 
   // Local state for optimistic UI updates based on V0 example
@@ -157,20 +155,15 @@ const PostItem: React.FC<PostItemProps> = ({ post, onVote, index, isExpanded, on
               </Link>
             </span>
             <span>{timeAgo}</span>
-            <button
-              onClick={() => onToggleExpand(post.id)}
+            <Link
+              href={`/post/${post.id}`}
               className={`flex items-center gap-1 hover:text-foreground transition-colors ${focusRingClass} px-0.5`}
+              passHref
             >
               <MessageSquare className="h-4 w-4" />
               {post.commentCount} {post.commentCount === 1 ? 'comment' : 'comments'}
-            </button>
+            </Link>
           </div>
-
-          {isExpanded && post.textContent && (
-            <div className="mt-3 text-sm text-foreground/90 border-l-2 border-muted pl-3 py-1 whitespace-pre-wrap break-words">
-              {post.textContent}
-            </div>
-          )}
         </div>
       </div>
     </article>
