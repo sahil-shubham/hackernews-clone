@@ -21,7 +21,7 @@ export default function BookmarksClient({ initialPosts, user }: BookmarksClientP
   }
 
   return (
-    <PageContainer className="py-8 max-w-4xl">
+    <PageContainer className="py-8 max-w-5xl">
       <div className="mb-8">
         <h1 className="text-2xl font-bold mb-2">Bookmarks</h1>
         <p className="text-muted-foreground">Posts you&apos;ve saved for later</p>
