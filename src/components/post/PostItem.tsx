@@ -84,11 +84,21 @@ const PostItem: React.FC<PostItemProps> = ({ post, user, isBookmarked = false, o
           setDisplayPoints(originalPoints)
           setCurrentVote(originalVote)
           console.error("Failed to vote on post:", result.message)
+          toast.error(result.message || 'Failed to record vote.')
+        } else {
+          if (result.newVoteType === 'UPVOTE') {
+            toast.success('Post upvoted!');
+          } else if (result.newVoteType === 'DOWNVOTE') {
+            toast.success('Post downvoted!');
+          } else {
+            toast.info('Post vote removed.');
+          }
         }
       } catch (error) {
         setDisplayPoints(originalPoints)
         setCurrentVote(originalVote)
         console.error('Exception during post vote transition:', error)
+        toast.error('An unexpected error occurred while voting.')
       }
     })
   }

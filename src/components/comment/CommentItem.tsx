@@ -13,6 +13,7 @@ import { FlexContainer } from '../ui/layout'
 import CommentForm from './CommentForm'
 import Link from 'next/link'
 import { Text } from '../ui/typography'
+import { toast } from 'sonner'
 
 interface CommentItemProps {
   comment: CommentType
@@ -81,11 +82,21 @@ const CommentItem: React.FC<CommentItemProps> = ({
           setCurrentVote(originalVote)
           setDisplayPoints(originalPoints)
           console.error('Comment vote failed:', result.message)
+          toast.error(result.message || 'Failed to record comment vote.')
+        } else {
+          if (result.newVoteType === 'UPVOTE') {
+            toast.success('Comment upvoted!');
+          } else if (result.newVoteType === 'DOWNVOTE') {
+            toast.success('Comment downvoted!');
+          } else {
+            toast.info('Comment vote removed.');
+          }
         }
       } catch (error) {
         setCurrentVote(originalVote)
         setDisplayPoints(originalPoints)
         console.error('Exception during comment vote transition:', error)
+        toast.error('An unexpected error occurred while voting on the comment.')
       }
     })
   }
