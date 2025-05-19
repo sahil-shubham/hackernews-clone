@@ -9,7 +9,7 @@ import { useTheme } from 'next-themes'
 import { User } from '@/lib/authUtils';
 import { useAuthAPI } from '@/hooks/useAuthAPI'
 import NotificationBell from '@/components/notifications/NotificationBell'
-import { Suspense } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 
 interface HeaderComponentProps {
   user: User | null;
@@ -23,6 +23,11 @@ const HeaderComponent: React.FC<HeaderComponentProps> = ({ user }) => {
   const currentSearchQuery = searchParams.get('search') || ''
 
   const { theme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const handleSortChange = (newSort: string) => {
     const params = new URLSearchParams(searchParams.toString())
@@ -88,7 +93,7 @@ const HeaderComponent: React.FC<HeaderComponentProps> = ({ user }) => {
             className="p-1.5 rounded-full hover:bg-primary-foreground/20 transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
             aria-label="Toggle theme"
           >
-            {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            {mounted && (theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />)}
           </button>
 
           {user ? (
