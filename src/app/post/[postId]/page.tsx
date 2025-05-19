@@ -1,10 +1,12 @@
 import { Suspense } from 'react'
 import { notFound } from 'next/navigation'
-import { cookies } from 'next/headers'
+// import { cookies } from 'next/headers' // No longer directly needed for these functions
 import PostDetailPageClient from '@/components/post/PostDetailPageClient'
 import { getServerSideUser } from '@/lib/authUtils'
+import { prisma } from '@/lib/prisma' // Import Prisma client
 import type { Post as PostType } from '@/types/post'
 import type { Comment as CommentType } from '@/types/comment'
+import type { VoteType as PrismaVoteType } from '@prisma/client'
 import { PageContainer } from '@/components/ui/layout'
 
 const LoadingSkeleton = () => (
@@ -31,59 +33,110 @@ const LoadingSkeleton = () => (
   </PageContainer>
 )
 
-async function fetchPostDetails(postId: string, userToken: string | null): Promise<PostType | null> {
-  const headers: HeadersInit = {}
-  // The middleware handles cookie-based auth for API routes,
-  // but if calling an external API that needs a Bearer token, it would be added here.
-  // For internal API calls, cookies are forwarded by default by Next.js fetch running on server.
-  // If we want to explicitly pass the user's cookie for internal API that relies on it (not x-user-id):
-  // const cookieStore = cookies()
-  // const authToken = cookieStore.get('auth-token')
-  // if (authToken) headers.Cookie = `auth-token=${authToken.value}`
+async function fetchPostDetails(postId: string, currentUserId: string | null): Promise<PostType | null> {
+  const postData = await prisma.post.findUnique({
+    where: { id: postId },
+    include: {
+      author: {
+        select: { id: true, username: true },
+      },
+      votes: {
+        select: { userId: true, voteType: true },
+      },
+      _count: {
+        select: { comments: true },
+      },
+    },
+  })
 
-  // However, our API routes (e.g., GET /api/posts/:id) use x-user-id from middleware
-  // which is derived from the cookie, so explicit token/cookie passing in fetch header might not be needed
-  // if the API route is configured correctly to read `x-user-id`.
-  // Let's assume for now the API route can get user context if needed via middleware + x-user-id.
+  if (!postData) return null
 
-  try {
-    const response = await fetch(`/api/posts/${postId}`, { 
-      headers, 
-      cache: 'no-store' // Or specific caching strategy
-    })
-    if (response.status === 404) return null
-    if (!response.ok) {
-      const errorBody = await response.text()
-      console.error(`API Error (${response.status}) fetching post ${postId}: ${errorBody}`)
-      throw new Error(`Failed to fetch post details: ${response.status}`)
+  let currentUserVote: PrismaVoteType | undefined = undefined
+  if (currentUserId) {
+    const userVoteOnPost = postData.votes.find((vote) => vote.userId === currentUserId)
+    if (userVoteOnPost) {
+      currentUserVote = userVoteOnPost.voteType
     }
-    return response.json()
-  } catch (error) {
-    console.error(`Network/Fetch Error for post ${postId}:`, error)
-    throw error // Rethrow to be caught by page
+  }
+
+  const points = postData.votes.reduce((acc, vote) => {
+    if (vote.voteType === 'UPVOTE') return acc + 1
+    if (vote.voteType === 'DOWNVOTE') return acc - 1
+    return acc
+  }, 0)
+
+  return {
+    id: postData.id,
+    title: postData.title,
+    url: postData.url,
+    textContent: postData.textContent,
+    points: points,
+    author: postData.author,
+    createdAt: postData.createdAt.toISOString(),
+    commentCount: postData._count.comments,
+    type: postData.type as "LINK" | "TEXT",
+    voteType: currentUserVote,
+    hasVoted: !!currentUserVote,
   }
 }
 
-async function fetchPostComments(postId: string, userToken: string | null): Promise<CommentType[]> {
-  const headers: HeadersInit = {}
-  // Similar consideration for headers as in fetchPostDetails
+async function fetchPostComments(postId: string, currentUserId: string | null): Promise<CommentType[]> {
+  const commentsData = await prisma.comment.findMany({
+    where: { postId: postId, parentId: null },
+    include: {
+      author: {
+        select: { id: true, username: true },
+      },
+      votes: {
+        select: { userId: true, voteType: true },
+      },
+      replies: {
+        include: {
+          author: { select: { id: true, username: true } },
+          votes: { select: { userId: true, voteType: true } },
+          replies: {
+            include: {
+              author: { select: { id: true, username: true } },
+              votes: { select: { userId: true, voteType: true } },
+            },
+            orderBy: { createdAt: 'asc' },
+          },
+        },
+        orderBy: { createdAt: 'asc' },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  })
 
-  try {
-    const response = await fetch(`/api/posts/${postId}/comments`, { 
-      headers, 
-      cache: 'no-store' // Or specific caching strategy
+  const transformComments = (prismaComments: any[]): CommentType[] => {
+    return prismaComments.map((comment) => {
+      let currentUserVoteOnComment: PrismaVoteType | undefined = undefined
+      if (currentUserId) {
+        const userVote = comment.votes.find((vote: any) => vote.userId === currentUserId)
+        if (userVote) {
+          currentUserVoteOnComment = userVote.voteType
+        }
+      }
+
+      const points = comment.votes.reduce((acc: number, vote: any) => {
+        if (vote.voteType === 'UPVOTE') return acc + 1
+        if (vote.voteType === 'DOWNVOTE') return acc - 1
+        return acc
+      }, 0)
+
+      return {
+        id: comment.id,
+        textContent: comment.textContent,
+        author: comment.author,
+        createdAt: comment.createdAt.toISOString(),
+        points: points,
+        voteType: currentUserVoteOnComment,
+        hasVoted: !!currentUserVoteOnComment,
+        replies: comment.replies ? transformComments(comment.replies) : [],
+      }
     })
-    if (!response.ok) {
-      const errorBody = await response.text()
-      console.error(`API Error (${response.status}) fetching comments for post ${postId}: ${errorBody}`)
-      throw new Error(`Failed to fetch comments: ${response.status}`)
-    }
-    const data = await response.json()
-    return data.comments || [] // API returns { comments: [...] }
-  } catch (error) {
-    console.error(`Network/Fetch Error for comments on post ${postId}:`, error)
-    throw error // Rethrow to be caught by page
   }
+  return transformComments(commentsData)
 }
 
 interface PostDetailPageProps {
@@ -100,8 +153,8 @@ export default async function PostDetailPage({ params: paramsPromise }: PostDeta
 
   // Fetch data in parallel
   const [postResult, commentsResult] = await Promise.allSettled([
-    fetchPostDetails(postId, currentUser?.token || null),
-    fetchPostComments(postId, currentUser?.token || null)
+    fetchPostDetails(postId, currentUser?.id || null),
+    fetchPostComments(postId, currentUser?.id || null)
   ])
 
   const post = postResult.status === 'fulfilled' ? postResult.value : null

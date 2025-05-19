@@ -2,37 +2,109 @@ import { Suspense } from 'react';
 import HomePageClient from '@/components/HomePageClient';
 import type { Post } from '@/types/post';
 import { getServerSideUser } from '@/lib/authUtils';
+import { prisma } from '@/lib/prisma'; // Import Prisma client
+import type { VoteType as PrismaVoteType, PostType as PrismaPostType } from '@prisma/client'; // Import Prisma types
 
-async function fetchPostsData(page: number, sort: string, searchQuery: string, userToken: string | null) {
-  const queryParams = new URLSearchParams({
-    page: page.toString(),
-    sort,
-    limit: '30',
+async function fetchPostsData(
+  page: number,
+  sort: string,
+  searchQuery: string,
+  currentUserId: string | null
+) {
+  const limit = 30;
+  const offset = (page - 1) * limit;
+
+  let orderBy: any = { createdAt: 'desc' }; // Default for 'new'
+  let whereClause: any = {};
+
+  if (searchQuery) {
+    // Using OR for searching in title or textContent. 
+    // For more advanced full-text search, you might need to adjust your Prisma schema and query structure.
+    whereClause.OR = [
+      { title: { contains: searchQuery, mode: 'insensitive' } }, 
+      { textContent: { contains: searchQuery, mode: 'insensitive' } },
+    ];
+  }
+
+  // Note: For 'top' and 'best', Prisma doesn't directly support ordering by aggregated vote counts 
+  // or a complex scoring formula in a single findMany efficiently without raw queries or views.
+  // The approach here is to fetch more data than needed for 'top' and sort in application code,
+  // or use a simpler multi-field sort for 'best'.
+
+  if (sort === 'best') {
+    // Simple 'best': more points -> more comments -> newer
+    orderBy = [{ votes: { _count: 'desc' } }, { comments: { _count: 'desc' } }, { createdAt: 'desc' }];
+    // This orderBy on related counts might not be directly supported or performant in all Prisma versions/
+    // If issues arise, we would fetch posts and sort them in the application layer after calculating scores.
+    // For true 'best' like Hacker News, a more complex scoring algorithm considering time decay is needed.
+  }
+  // 'top' sort will be handled after fetching posts, as we need to calculate points first.
+
+  const postsData = await prisma.post.findMany({
+    where: whereClause,
+    include: {
+      author: { select: { id: true, username: true } },
+      votes: { select: { userId: true, voteType: true } },
+      _count: { select: { comments: true } },
+    },
+    orderBy: sort === 'top' ? { createdAt: 'desc' } : orderBy, // For 'top', fetch recent ones then sort by points
+    skip: offset,
+    take: limit,
   });
-  if (searchQuery) queryParams.set('search', searchQuery);
 
-  const headers: HeadersInit = {};
-  if (userToken) headers.Authorization = `Bearer ${userToken}`;
-  
-  const fetchUrl = `/api/posts?${queryParams.toString()}`;
+  const totalPosts = await prisma.post.count({ where: whereClause });
 
-  try {
-    const response = await fetch(fetchUrl, { headers, cache: 'no-store' });
-    if (!response.ok) {
-      const errorBody = await response.text(); 
-      console.error(`API Error (${response.status}) fetching posts from ${fetchUrl}: ${errorBody}`);
-      try {
-        const errorJson = JSON.parse(errorBody);
-        throw new Error(errorJson.message || `API error: ${response.status}`);
-      } catch (e) {
-        throw new Error(`API error: ${response.status} - ${errorBody}`);
+  let processedPosts = postsData.map((post) => {
+    const points = post.votes.reduce((acc, vote) => {
+      if (vote.voteType === 'UPVOTE') return acc + 1;
+      if (vote.voteType === 'DOWNVOTE') return acc - 1;
+      return acc;
+    }, 0);
+
+    let currentUserVote: PrismaVoteType | undefined = undefined;
+    if (currentUserId) {
+      const userVoteOnPost = post.votes.find((vote) => vote.userId === currentUserId);
+      if (userVoteOnPost) {
+        currentUserVote = userVoteOnPost.voteType;
       }
     }
-    return response.json();
-  } catch (error: any) {
-    console.error(`Network/Fetch Error for ${fetchUrl}:`, error);
-    throw new Error(error.message || "Failed to fetch posts due to network or parsing issue.");
+
+    return {
+      id: post.id,
+      title: post.title,
+      url: post.url,
+      textContent: post.textContent,
+      points: points,
+      author: post.author,
+      createdAt: post.createdAt.toISOString(),
+      commentCount: post._count.comments,
+      type: post.type as PrismaPostType as "LINK" | "TEXT", // Ensure correct type assertion
+      voteType: currentUserVote,
+      hasVoted: !!currentUserVote,
+    };
+  });
+
+  if (sort === 'top') {
+    processedPosts.sort((a, b) => b.points - a.points); // Sort by points descending for 'top'
   }
+  // For 'best', if the Prisma orderBy on counts isn't sufficient/performant, 
+  // implement a custom scoring and sorting logic here.
+  // Example simplified scoring for 'best' if Prisma orderBy on counts is problematic:
+  // if (sort === 'best') {
+  //   processedPosts.sort((a, b) => {
+  //     const scoreA = a.points * 2 + a.commentCount; // Arbitrary weights
+  //     const scoreB = b.points * 2 + b.commentCount;
+  //     if (scoreB !== scoreA) return scoreB - scoreA;
+  //     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(); // Then by recency
+  //   });
+  // }
+
+  return {
+    posts: processedPosts,
+    page,
+    totalPages: Math.ceil(totalPosts / limit),
+    totalPosts,
+  };
 }
 
 interface PageProps {
@@ -53,14 +125,14 @@ export default async function Page({ searchParams: searchParamsPromise }: PagePr
   const sort = (Array.isArray(sortParam) ? sortParam[0] : sortParam) || 'new';
   const searchQuery = (Array.isArray(searchParam) ? searchParam[0] : searchParam) || '';
 
-  const initialUser = await getServerSideUser(); // Uses the imported version
+  const initialUser = await getServerSideUser();
 
   let initialPosts: Post[] = [];
   let initialPagination = { page: 1, totalPages: 1, totalPosts: 0 };
   let initialError: string | null = null;
 
   try {
-    const data = await fetchPostsData(page, sort, searchQuery, initialUser?.token || null);
+    const data = await fetchPostsData(page, sort, searchQuery, initialUser?.id || null);
     initialPosts = data.posts;
     initialPagination = { page: data.page, totalPages: data.totalPages, totalPosts: data.totalPosts };
   } catch (err: any) {
