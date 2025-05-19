@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { ThemeProvider } from '@/styles/theme-provider'
-import { Toaster } from 'sonner'
+import { Toaster } from '@/components/ui/Toaster'
 import './globals.css'
 import HeaderWrapper from '@/components/Header'
 import { getServerSideUser } from '@/lib/authUtils'
@@ -34,7 +34,7 @@ export default async function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
           <HeaderWrapper user={serverUser} />
           <main>{children}</main>
-          <Toaster richColors closeButton position="bottom-center" />
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>
