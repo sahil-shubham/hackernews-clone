@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "seed": "tsx prisma/seed.ts",
+    "seed": "tsx scripts/seed.ts",
     "types:generate": "tsx scripts/generate-types.",
     "vercel-build": "prisma generate && prisma migrate deploy && next build",
     "prepare": "husky"
