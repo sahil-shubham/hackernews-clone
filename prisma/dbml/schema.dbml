@@ -1,0 +1,118 @@
+//// ------------------------------------------------------
+//// THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+//// ------------------------------------------------------
+
+Table users {
+  id String [pk]
+  email String [unique, not null]
+  username String [unique, not null]
+  password String [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  posts posts [not null]
+  comments comments [not null]
+  votes votes [not null]
+  notifications notifications [not null]
+  triggeredNotifications notifications [not null]
+}
+
+Table posts {
+  id String [pk]
+  title String [not null]
+  url String
+  textContent String
+  type PostType [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  authorId String [not null]
+  author users [not null]
+  comments comments [not null]
+  votes votes [not null]
+  notifications notifications [not null]
+}
+
+Table comments {
+  id String [pk]
+  textContent String [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  authorId String [not null]
+  author users [not null]
+  postId String [not null]
+  post posts [not null]
+  parentId String
+  parent comments
+  replies comments [not null]
+  votes votes [not null]
+  notifications notifications [not null]
+}
+
+Table votes {
+  id String [pk]
+  voteType VoteType [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  userId String [not null]
+  user users [not null]
+  postId String
+  post posts
+  commentId String
+  comment comments
+
+  indexes {
+    (userId, postId) [unique]
+    (userId, commentId) [unique]
+  }
+}
+
+Table notifications {
+  id String [pk]
+  createdAt DateTime [default: `now()`, not null]
+  read Boolean [not null, default: false]
+  type NotificationType [not null]
+  recipientId String [not null]
+  recipient users [not null]
+  triggeringUserId String [not null]
+  triggeringUser users [not null]
+  postId String
+  post posts
+  commentId String
+  comment comments
+}
+
+Enum PostType {
+  LINK
+  TEXT
+}
+
+Enum VoteType {
+  UPVOTE
+  DOWNVOTE
+}
+
+Enum NotificationType {
+  NEW_COMMENT_ON_POST
+  REPLY_TO_COMMENT
+}
+
+Ref: posts.authorId > users.id [delete: Cascade]
+
+Ref: comments.authorId > users.id [delete: Cascade]
+
+Ref: comments.postId > posts.id [delete: Cascade]
+
+Ref: comments.parentId - comments.id [delete: Set Null]
+
+Ref: votes.userId > users.id [delete: Cascade]
+
+Ref: votes.postId > posts.id [delete: Cascade]
+
+Ref: votes.commentId > comments.id [delete: Cascade]
+
+Ref: notifications.recipientId > users.id [delete: Cascade]
+
+Ref: notifications.triggeringUserId > users.id [delete: Cascade]
+
+Ref: notifications.postId > posts.id [delete: Cascade]
+
+Ref: notifications.commentId > comments.id [delete: Cascade]
