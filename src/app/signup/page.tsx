@@ -7,7 +7,7 @@ import Link from 'next/link'
 
 export default function SignupPage() {
   return (
-    <PageContainer className="flex flex-col items-center justify-center min-h-screen py-12">
+    <PageContainer className="flex flex-col items-center justify-center py-12">
       <SignupForm />
       <FlexContainer justify="center" direction="row" className="mt-8">
         <Text size="base">
