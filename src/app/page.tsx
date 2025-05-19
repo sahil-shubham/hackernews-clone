@@ -17,7 +17,7 @@ async function fetchPostsData(
   const offset = (page - 1) * limit;
 
   let orderBy: any = { createdAt: 'desc' }; // Default for 'new'
-  let whereClause: any = {};
+  const whereClause: any = {};
 
   if (searchQuery) {
     // Using OR for searching in title or textContent. 
@@ -56,7 +56,7 @@ async function fetchPostsData(
 
   const totalPosts = await prisma.post.count({ where: whereClause });
 
-  let processedPosts = postsData.map((post) => {
+  const processedPosts = postsData.map((post) => {
     const points = post.votes.reduce((acc, vote) => {
       if (vote.voteType === 'UPVOTE') return acc + 1;
       if (vote.voteType === 'DOWNVOTE') return acc - 1;
