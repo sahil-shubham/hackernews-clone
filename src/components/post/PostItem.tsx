@@ -8,29 +8,24 @@ import {
   ChevronDown,
   MessageSquare,
   ExternalLink
-  // Bookmark, // For future use
-  // Share2, // For future use
 } from 'lucide-react'
-// import { useAuthStore } from '@/hooks/useAuthStore' // Removed
-import { User } from '@/lib/authUtils'; // Added
-import type { Post as PostType } from '@/types/post' // Renamed to avoid conflict with component
-// Removed: import { usePostAPI } from '@/hooks/usePostAPI' 
+import { User } from '@/lib/authUtils'
+import type { Post as PostType } from '@/types/post'
+import { voteOnPost } from '@/app/actions/voteActions'
+import { useTransition } from 'react'
 
 interface PostItemProps {
   post: PostType
-  onVote: (postId: string, voteType: 'UPVOTE' | 'DOWNVOTE') => Promise<void> // Expects updated post or null
   index?: number
-  user: User | null; // Added user prop
+  user: User | null
 }
 
-const PostItem: React.FC<PostItemProps> = ({ post, onVote, index, user }) => {
-  // const user = useAuthStore((state) => state.user) // Removed
-
-  // Local state for optimistic UI updates based on V0 example
+const PostItem: React.FC<PostItemProps> = ({ post, user }) => {
   const [currentVote, setCurrentVote] = useState<'UPVOTE' | 'DOWNVOTE' | null>(null)
   const [displayPoints, setDisplayPoints] = useState(post.points)
+  const [isPending, startTransition] = useTransition()
 
-  // Effect to sync with prop changes (e.g., after parent re-fetches or on initial load)
+  // Effect to sync with prop changes (e.g., after parent re-fetches or on initial load post-revalidation)
   useEffect(() => {
     setDisplayPoints(post.points)
     setCurrentVote(post.voteType || null)
@@ -38,43 +33,53 @@ const PostItem: React.FC<PostItemProps> = ({ post, onVote, index, user }) => {
 
   const handleVote = async (newVoteDirection: 'UPVOTE' | 'DOWNVOTE') => {
     if (!user) {
-      alert('Please login to vote.')
+      console.warn('User not logged in. Vote attempt blocked.')
       return
     }
 
+    const originalPoints = displayPoints
+    const originalVote = currentVote
+
+    // Optimistic update
     let newOptimisticPoints = displayPoints
-    const originalPoints = post.points // Points before this vote action
-    const originalVote = post.voteType || null // Vote state before this action
+    let newOptimisticVote = currentVote
 
     if (currentVote === newVoteDirection) {
-      // Clicking the same button (undo vote)
-      newOptimisticPoints = originalPoints
-      setCurrentVote(null)
+      // Undoing vote
+      newOptimisticPoints += (newVoteDirection === 'UPVOTE' ? -1 : 1) * (originalVote === newVoteDirection ? 1 : 0)
+      if (post.voteType === newVoteDirection) {
+        newOptimisticPoints = post.points + (newVoteDirection === 'UPVOTE' ? -1 : 1)
+      } else {
+        newOptimisticPoints = post.points
+      }
+      newOptimisticVote = null
     } else {
       // New vote or switching vote
-      newOptimisticPoints =
-        originalPoints +
-        (newVoteDirection === 'UPVOTE' ? 1 : -1) * (originalVote && originalVote !== newVoteDirection ? 2 : 1)
-      setCurrentVote(newVoteDirection)
+      newOptimisticPoints = post.points + (newVoteDirection === 'UPVOTE' ? 1 : -1)
+      if (originalVote && originalVote !== newVoteDirection) {
+        newOptimisticPoints += (newVoteDirection === 'UPVOTE' ? 1 : -1)
+      }
+      newOptimisticVote = newVoteDirection
     }
+    
     setDisplayPoints(newOptimisticPoints)
+    setCurrentVote(newOptimisticVote)
 
-    try {
-      await onVote(post.id, newVoteDirection)
-      // If server confirms, re-sync with server state if needed, though optimistic is usually fine
-      // setDisplayPoints(updatedPostFromServer.points);
-      // setCurrentVote(updatedPostFromServer.voteType || null);
-        // Rollback optimistic update if server call fails or returns null
-        setDisplayPoints(post.points)
-        setCurrentVote(post.voteType || null)
-        alert('Failed to register vote. Please try again.')
-    } catch (error) {
-      console.error('Failed to vote:', error)
-      // Rollback optimistic update
-      setDisplayPoints(post.points)
-      setCurrentVote(post.voteType || null)
-      alert('Failed to register vote. Please try again.')
-    }
+    startTransition(async () => {
+      try {
+        const result = await voteOnPost(post.id, newVoteDirection)
+
+        if (!result.success) {
+          setDisplayPoints(originalPoints)
+          setCurrentVote(originalVote)
+          console.error("Failed to vote on post:", result.message)
+        }
+      } catch (error) {
+        setDisplayPoints(originalPoints)
+        setCurrentVote(originalVote)
+        console.error('Exception during post vote transition:', error)
+      }
+    })
   }
 
   const domain = post.url ? new URL(post.url).hostname.replace(/^www\./, '') : null
@@ -95,7 +100,7 @@ const PostItem: React.FC<PostItemProps> = ({ post, onVote, index, user }) => {
             onClick={() => handleVote('UPVOTE')}
             className={`p-1 rounded-full transition-colors ${focusRingClass} ${currentVote === 'UPVOTE' ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:bg-muted/50 disabled:text-gray-400'}`}
             aria-label="Upvote"
-            disabled={!user}
+            disabled={!user || isPending}
           >
             <ChevronUp className="h-5 w-5" />
           </button>
@@ -110,7 +115,7 @@ const PostItem: React.FC<PostItemProps> = ({ post, onVote, index, user }) => {
             onClick={() => handleVote('DOWNVOTE')}
             className={`p-1 rounded-full transition-colors ${focusRingClass} ${currentVote === 'DOWNVOTE' ? 'text-destructive bg-destructive/10' : 'text-muted-foreground hover:bg-muted/50 disabled:text-gray-400'}`}
             aria-label="Downvote"
-            disabled={!user}
+            disabled={!user || isPending}
           >
             <ChevronDown className="h-5 w-5" />
           </button>
@@ -138,7 +143,7 @@ const PostItem: React.FC<PostItemProps> = ({ post, onVote, index, user }) => {
               <Link
                 href={post.url}
                 passHref
-                className={`text-xs text-muted-foreground hover:underline flex items-center gap-1 mt-1 flex-shrink-0 ${focusRingClass} px-0.5`}
+                className={`hidden sm:flex text-xs text-muted-foreground hover:underline items-center gap-1 mt-1 flex-shrink-0 ${focusRingClass} px-0.5`}
               >
                 {domain}
                 <ExternalLink className="h-3 w-3" />
