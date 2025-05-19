@@ -9,7 +9,6 @@ interface CommentListProps {
   postId: string;
   currentUser: User | null;
   loading?: boolean;
-  onReply?: (parentId: string, text: string, postId: string) => Promise<void>;
 }
 
 const LoadingCommentSkeleton = () => (
@@ -25,7 +24,6 @@ export default function CommentList({
   postId,
   currentUser,
   loading = false, 
-  onReply 
 }: CommentListProps) {
   if (loading) {
     return (
@@ -56,7 +54,6 @@ export default function CommentList({
               comment={comment}
               postId={postId}
               currentUser={currentUser}
-              onReply={onReply}
             />
           ))}
         </div>

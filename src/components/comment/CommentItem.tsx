@@ -5,6 +5,7 @@ import { formatDistanceToNow } from 'date-fns'
 import type { Comment as CommentType } from '@/types/comment'
 import { User } from '@/lib/authUtils'
 import { voteOnComment } from '@/app/actions/voteActions'
+import { submitReply } from '@/app/actions/replyActions'
 import { useTransition } from 'react'
 import { ChevronUp, MessageCircle } from 'lucide-react'
 import { Button } from '../ui/Button'
@@ -16,7 +17,6 @@ import { Text } from '../ui/typography'
 interface CommentItemProps {
   comment: CommentType
   postId: string
-  onReply?: (parentId: string, text: string, postId: string) => Promise<void>
   depth?: number
   maxDepth?: number
   currentUser: User | null
@@ -25,7 +25,6 @@ interface CommentItemProps {
 const CommentItem: React.FC<CommentItemProps> = ({
   comment,
   postId,
-  onReply,
   depth = 0,
   maxDepth = 5,
   currentUser
@@ -35,7 +34,8 @@ const CommentItem: React.FC<CommentItemProps> = ({
 
   const [currentVote, setCurrentVote] = useState(comment.voteType || null)
   const [displayPoints, setDisplayPoints] = useState(comment.points)
-  const [isPending, startTransition] = useTransition()
+  const [votePending, startVoteTransition] = useTransition()
+  const [replyPending, startReplyTransition] = useTransition()
 
   useEffect(() => {
     setCurrentVote(comment.voteType || null)
@@ -73,7 +73,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
     setCurrentVote(newOptimisticVote)
     setDisplayPoints(newOptimisticPoints)
 
-    startTransition(async () => {
+    startVoteTransition(async () => {
       try {
         const result = await voteOnComment(comment.id, voteDirection, postId)
 
@@ -91,14 +91,20 @@ const CommentItem: React.FC<CommentItemProps> = ({
   }
 
   const handleReplySubmit = async (text: string) => {
-    if (!user || !onReply || !text.trim()) return
+    if (!user || !text.trim()) return
 
-    try {
-      await onReply(comment.id, text, postId)
-      setIsReplying(false)
-    } catch (error) {
-      console.error('Failed to submit reply:', error)
-    }
+    startReplyTransition(async () => {
+      try {
+        const result = await submitReply(comment.id, text, postId)
+        if (result.success) {
+          setIsReplying(false)
+        } else {
+          console.error('Failed to submit reply:', result.message)
+        }
+      } catch (error) {
+        console.error('Exception during reply submission:', error)
+      }
+    })
   }
 
   const containerPaddingClass = depth > 0 ? (depth === 1 ? 'pl-4 md:pl-6' : 'pl-3 md:pl-4') : ''
@@ -133,7 +139,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
                   onClick={() => handleVote('UPVOTE')}
                   aria-label="Upvote comment"
                   className={`p-0.5 h-auto rounded ${currentVote === 'UPVOTE' ? 'text-primary' : 'hover:text-primary'}`}
-                  disabled={isPending}
+                  disabled={votePending}
                 >
                   <ChevronUp size={16} strokeWidth={currentVote === 'UPVOTE' ? 3 : 2} />
                 </Button>
@@ -151,20 +157,21 @@ const CommentItem: React.FC<CommentItemProps> = ({
               </Text>
             )}
 
-            {user && onReply && depth < maxDepth && (
+            {user && depth < maxDepth && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsReplying(!isReplying)}
+                disabled={replyPending}
                 className="p-1 h-auto text-xs flex items-center"
               >
                 <MessageCircle size={14} className="mr-1" />
-                {isReplying ? 'Cancel' : 'Reply'}
+                {isReplying ? 'Cancel' : (replyPending ? 'Submitting...' : 'Reply')}
               </Button>
             )}
           </FlexContainer>
 
-          {isReplying && onReply && currentUser && (
+          {isReplying && currentUser && (
             <div className="mt-3">
               <CommentForm
                 postId={postId}
@@ -172,6 +179,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
                 onAddComment={handleReplySubmit}
                 placeholder={`Replying to ${comment.author.username}...`}
                 parentId={comment.id}
+                isSubmitting={replyPending}
               />
             </div>
           )}
@@ -180,12 +188,19 @@ const CommentItem: React.FC<CommentItemProps> = ({
 
       {comment.replies && comment.replies.length > 0 && depth < maxDepth && (
         <div className="mt-1">
-          {comment.replies.map((reply) => (
+          {comment.replies
+            .filter(reply => {
+              if (!reply || typeof reply.id === 'undefined') {
+                console.warn('Filtered out a malformed reply object:', reply);
+                return false;
+              }
+              return true;
+            })
+            .map((reply) => (
             <CommentItem
               key={reply.id}
               comment={reply}
               postId={postId}
-              onReply={onReply}
               depth={depth + 1}
               maxDepth={maxDepth}
               currentUser={currentUser}

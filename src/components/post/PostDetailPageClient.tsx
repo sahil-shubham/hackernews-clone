@@ -96,45 +96,6 @@ export default function PostDetailPageClient({
     }
   }
 
-  // Placeholder for handleCommentReply - to be reimplemented
-  const handleCommentReply = async (parentId: string, text: string) => {
-    if (!effectiveUser?.id || !effectiveUser?.username || !effectiveUser?.token) {
-      setActionError('You must be logged in to reply.')
-      return
-    }
-    // Potentially use a different loading state for replies if actions can overlap
-    setIsSubmittingComment(true)
-    setActionError(null)
-    try {
-      const response = await fetch(`/api/posts/${postId}/comments`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${effectiveUser.token}`
-        },
-        body: JSON.stringify({ textContent: text, parentId })
-      })
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Failed to post reply' }))
-        throw new Error(errorData.message)
-      }
-      const newReplyData = await response.json()
-      setComments((prevComments) => addReplyToCommentState(prevComments, parentId, newReplyData.comment))
-      // Update post's comment count if available and relevant
-      if (post && newReplyData.commentCount !== undefined) {
-        setPost((prevPost) => (prevPost ? { ...prevPost, commentCount: newReplyData.commentCount } : null))
-      } else if (post) {
-        // Incrementing might be tricky if API doesn't return full count,
-        // but it's a reply, so main comment count on post might not change, or API handles it.
-        // For now, let's assume the API provides the correct total count or CommentList will show its own count.
-      }
-    } catch (err: any) {
-      setActionError(err.message || 'Failed to post reply.')
-      console.error('Error adding reply:', err)
-    } finally {
-      setIsSubmittingComment(false)
-    }
-  }
 
   const addReplyToCommentState = (
     commentsList: CommentType[],
@@ -246,7 +207,6 @@ export default function PostDetailPageClient({
             postId={postId}
             currentUser={effectiveUser} // Pass currentUser
             loading={commentsLoading} // Pass a loading state if needed for comments section
-            onReply={handleCommentReply}
           />
         )}
       </section>
