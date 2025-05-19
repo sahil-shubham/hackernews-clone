@@ -1,9 +1,6 @@
-'use client';
-
 import React from 'react';
 import CommentItem from './CommentItem';
 import type { Comment as CommentType } from '@/types/comment';
-import { Heading as UiHeading } from '@/components/ui/typography';
 import { Text } from '@/components/ui/typography';
 import { User } from '@/lib/authUtils';
 
@@ -49,11 +46,6 @@ export default function CommentList({
 
   return (
     <div className="py-4">
-      <div className="mb-6">
-        <UiHeading as="h3" className="text-xl font-semibold">
-          Comments {comments.length > 0 && `(${comments.length})`}
-        </UiHeading>
-      </div>
       {comments.length === 0 ? (
         <div className="bg-card border border-dashed border-border p-6 rounded-md text-center">
           <Text emphasis="low">No comments yet. Be the first to comment!</Text>
