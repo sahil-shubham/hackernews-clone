@@ -1,111 +1,141 @@
-"use client";
+import { Suspense } from 'react';
+import { getServerSideUser } from '@/lib/authUtils';
+import { prisma } from '@/lib/prisma';
+import type { Post as PostType } from '@/types/post';
+import type { VoteType as PrismaVoteType, PostType as PrismaPostType } from '@prisma/client';
+import { PageContainer } from '@/components/ui/layout';
+import SearchInputClient from '@/components/SearchInputClient';
+import SearchResultsClient from '@/components/SearchResultsClient';
 
-import { Suspense, useState, useRef, useEffect } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import { Button } from "@/components/ui/Button";
-import { PageContainer } from "@/components/ui/layout";
-import { XIcon } from "lucide-react";
+export const revalidate = 60;
 
-const SearchResults = () => {
-  const searchParams = useSearchParams();
-  const query = searchParams.get("query") || "";
-  const page = searchParams.get("page") || "1";
-  const sort = searchParams.get("sort") || "new";
+interface FetchSearchResultsParams {
+  query: string;
+  page: number;
+  sort: string;
+  currentLoggedInUserId: string | null;
+  limit?: number;
+}
 
-  if (!query) {
-    return <p className="text-center text-muted-foreground py-8">Enter a search term to see results.</p>;
+async function fetchSearchResults({
+  query,
+  page,
+  sort,
+  currentLoggedInUserId,
+  limit = 20,
+}: FetchSearchResultsParams): Promise<{ posts: PostType[]; pagination: any; query: string } | null> {
+  if (!query.trim()) {
+    return { posts: [], pagination: { page: 1, totalPages: 0, totalPosts: 0, limit }, query };
   }
 
-  return (
-    <div className="mt-8">
-      <h2 className="text-xl font-semibold mb-4">Results for: <span className="text-primary">{query}</span></h2>
-      
-      <div className="border border-dashed border-border rounded-md p-8 text-center text-muted-foreground">
-        <p>Search results would appear here.</p>
-        <p className="text-xs mt-2">(Implement fetching and display using e.g. PostList)</p>
-      </div>
-    </div>
-  );
-};
-
-const SearchPageClient = () => {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const initialQuery = searchParams.get("query") || "";
-  const [searchTerm, setSearchTerm] = useState(initialQuery);
-  const searchInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    setSearchTerm(searchParams.get("query") || "");
-  }, [searchParams]);
-
-  useEffect(() => {
-    if (searchInputRef.current && !initialQuery) {
-      searchInputRef.current.focus();
-    }
-  }, [initialQuery]);
-
-  const handleSearchSubmit = (e?: React.FormEvent<HTMLFormElement>) => {
-    if (e) e.preventDefault();
-    const trimmedSearchTerm = searchTerm.trim();
-    const currentParams = new URLSearchParams(Array.from(searchParams.entries()));
-
-    if (trimmedSearchTerm) {
-      currentParams.set("query", trimmedSearchTerm);
-      currentParams.set("page", "1");
-    } else {
-      currentParams.delete("query");
-    }
-    router.push(`/search?${currentParams.toString()}`);
+  const offset = (page - 1) * limit;
+  let orderBy: any = { createdAt: 'desc' };
+  
+  const whereClause: any = {
+    OR: [
+      { title: { contains: query, mode: 'insensitive' } },
+      { textContent: { contains: query, mode: 'insensitive' } },
+    ],
   };
 
-  const handleClearSearch = () => {
-    setSearchTerm("");
-    const currentParams = new URLSearchParams(Array.from(searchParams.entries()));
-    currentParams.delete("query");
-    currentParams.set("page", "1"); 
-    router.push(`/search?${currentParams.toString()}`);
-    searchInputRef.current?.focus();
+  if (sort === 'best') {
+    orderBy = [{ votes: { _count: 'desc' } }, { comments: { _count: 'desc' } }, { createdAt: 'desc' }];
+  }
+
+  const postsData = await prisma.post.findMany({
+    where: whereClause,
+    include: {
+      author: { select: { id: true, username: true } },
+      votes: { select: { userId: true, voteType: true } },
+      _count: { select: { comments: true } },
+    },
+    orderBy: sort === 'top' ? { createdAt: 'desc' } : orderBy,
+    skip: offset,
+    take: limit,
+  });
+
+  const totalPosts = await prisma.post.count({ where: whereClause });
+
+  const processedPosts = postsData.map((post) => {
+    const points = post.votes.reduce((acc, vote) => {
+      if (vote.voteType === 'UPVOTE') return acc + 1;
+      if (vote.voteType === 'DOWNVOTE') return acc - 1;
+      return acc;
+    }, 0);
+
+    let currentUserVote: PrismaVoteType | undefined = undefined;
+    if (currentLoggedInUserId) {
+      const userVoteOnPost = post.votes.find((vote) => vote.userId === currentLoggedInUserId);
+      if (userVoteOnPost) {
+        currentUserVote = userVoteOnPost.voteType;
+      }
+    }
+    return {
+      id: post.id,
+      title: post.title,
+      url: post.url,
+      textContent: post.textContent,
+      points,
+      author: post.author,
+      createdAt: post.createdAt.toISOString(),
+      commentCount: post._count.comments,
+      type: post.type as PrismaPostType as 'LINK' | 'TEXT',
+      voteType: currentUserVote,
+      hasVoted: !!currentUserVote,
+    };
+  });
+
+  if (sort === 'top') {
+    processedPosts.sort((a, b) => b.points - a.points);
+  }
+
+  return {
+    posts: processedPosts,
+    pagination: {
+      page,
+      totalPages: Math.ceil(totalPosts / limit),
+      totalPosts,
+      limit,
+    },
+    query,
   };
+}
+
+interface SearchPageProps {
+  searchParams: Promise<{ 
+    query?: string;
+    page?: string;
+    sort?: string;
+  }>;
+}
+
+export default async function SearchPage({ searchParams }: SearchPageProps) {
+  const { query, page, sort } = await searchParams;
+
+  const currentUser = await getServerSideUser();
+  const searchResultsData = await fetchSearchResults({
+    query: query || '',
+    page: page ? Number(page) : 1,
+    sort: sort || 'new',
+    currentLoggedInUserId: currentUser?.id || null,
+  });
 
   return (
-    <PageContainer className="py-6 sm:py-8">
-      <form onSubmit={handleSearchSubmit} className="mb-8">
-        <div className="relative">
-          <input
-            ref={searchInputRef}
-            type="text"
-            placeholder="Search stories by title, URL, or author..."
-            value={searchTerm}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
-            className="mt-1 block w-full px-3 py-2 bg-background border border-input rounded-md text-sm shadow-sm placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring text-base pr-10 sm:pr-12 h-12 sm:h-14 text-lg"
-          />
-          {searchTerm && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={handleClearSearch}
-              aria-label="Clear search"
-              className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 sm:h-10 sm:w-10"
-            >
-              <XIcon className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
-            </Button>
-          )}
-        </div>
-      </form>
-      
+    <PageContainer className="py-6 sm:py-8 max-w-5xl">
+      <SearchInputClient initialQuery={query} />
       <Suspense fallback={<div className="text-center py-10">Loading search results...</div>}>
-        <SearchResults />
+        {searchResultsData && (
+          <SearchResultsClient
+            initialPosts={searchResultsData.posts}
+            initialPagination={searchResultsData.pagination}
+            currentUser={currentUser}
+            query={searchResultsData.query}
+          />
+        )}
+        {query && query.trim() && (
+           <p className="text-center text-muted-foreground py-8">Enter a search term to begin.</p>
+        )}
       </Suspense>
     </PageContainer>
-  );
-};
-
-export default function SearchPage() {
-  return (
-    <Suspense fallback={<div className="text-center py-10">Loading page...</div>}>
-      <SearchPageClient />
-    </Suspense>
   );
 } 
