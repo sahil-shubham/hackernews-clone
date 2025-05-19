@@ -1,6 +1,5 @@
 'use client';
 
-// import { useAuthStore, type User } from "@/hooks/useAuthStore"; // Removed
 import { User } from '@/lib/authUtils'; // Added
 import { Post } from "@/types/post";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -23,18 +22,16 @@ export default function HomePageClient({
   initialPosts,
   initialPagination,
   initialError,
-  initialUser, // Added initialUser to destructuring
+  initialUser, 
 }: HomePageClientProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
-  // const { user } = useAuthStore(); // Removed
 
   const [posts, setPosts] = useState<Post[]>(initialPosts);
   const [loading, setLoading] = useState(false); 
   const [error, setError] = useState<string | null>(initialError);
   const [pagination, setPagination] = useState(initialPagination);
 
-  const pageFromUrl = Number(searchParams.get('page') || '1');
   const sortFromUrl = searchParams.get('sort') || 'new';
   const searchQueryFromUrl = searchParams.get('search') || '';
 
@@ -44,66 +41,6 @@ export default function HomePageClient({
     setError(initialError);
   }, [initialPosts, initialPagination, initialError]);
 
-  const handleVote = async (postId: string, voteType: 'UPVOTE' | 'DOWNVOTE') => {
-    if (!initialUser || !initialUser.token) { // Changed to use initialUser
-      console.error('User not logged in or token missing for voting');
-      setError('Please log in to vote.');
-      return;
-    } 
-    
-    const originalPosts = [...posts];
-    setPosts(prevPosts => 
-      prevPosts.map(p => {
-        if (p.id === postId) {
-          let newPoints = p.points;
-          let newVoteType = p.voteType as 'UPVOTE' | 'DOWNVOTE' | null;
-
-          if (p.voteType === voteType) {
-            newPoints = voteType === 'UPVOTE' ? newPoints -1 : newPoints +1;
-            newVoteType = null;
-          } else { 
-            if (p.voteType === 'UPVOTE') newPoints -=1;
-            else if (p.voteType === 'DOWNVOTE') newPoints +=1;
-            newPoints = voteType === 'UPVOTE' ? newPoints +1 : newPoints -1;
-            newVoteType = voteType;
-          }
-          return {
-            ...p,
-            points: newPoints,
-            voteType: newVoteType,
-          };
-        }
-        return p;
-      })
-    );
-
-    try {
-      const response = await fetch(`/api/posts/${postId}/vote`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${initialUser.token}`, // Changed to use initialUser.token
-        },
-        body: JSON.stringify({ voteType }),
-      });
-      
-      if (!response.ok) {
-        setPosts(originalPosts); 
-        const errorData = await response.json().catch(() => ({ message: 'Failed to vote on post' }));
-        throw new Error(errorData.message || 'Failed to vote on post');
-      }
-      
-      const updatedPostData = await response.json();
-      setPosts(prevPosts => 
-        prevPosts.map(p => (p.id === postId ? { ...p, ...updatedPostData.post } : p))
-      );
-
-    } catch (err: any) {
-      console.error('Error voting on post:', err);
-      setError(err.message || 'Could not submit vote. Please try again.');
-      setPosts(originalPosts);
-    }
-  };
 
   const goToPage = (pageNum: number) => {
     const currentParams = new URLSearchParams(); 
@@ -132,7 +69,7 @@ export default function HomePageClient({
         </div>
       }
       
-      <PostList posts={posts} onVote={handleVote} user={initialUser} /> {/* Pass initialUser to PostList */}
+      <PostList posts={posts} user={initialUser} /> 
       
       {!loading && pagination.totalPages > 1 && (
         <div className="flex justify-center py-lg">

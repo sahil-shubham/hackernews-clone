@@ -5,7 +5,7 @@ import { User } from '@/lib/authUtils';
 import NotificationPopup from './NotificationPopup';
 import type { ApiNotification } from './NotificationPopup';
 import { useRouter } from 'next/navigation';
-import { Bell } from 'lucide-react';
+import { Bell, BellDot } from 'lucide-react';
 
 interface NotificationBellProps {
   user: User | null;
@@ -101,15 +101,12 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ user }) => {
     <div 
       ref={bellRef} 
       onClick={handleBellClick} 
-      className="relative cursor-pointer p-2 rounded-full flex items-center justify-center hover:bg-muted"
+      className="relative cursor-pointer p-2 rounded-full flex items-center justify-center hover:bg-primary-foreground/20 transition-colors"
     >
-      <Bell className="h-5 w-5 text-foreground" />
-      {unreadCount > 0 && (
-        <span 
-          className="absolute top-0 right-0 bg-destructive text-destructive-foreground rounded-full px-1.5 py-0.5 text-xs font-bold min-w-[18px] text-center leading-none"
-        >
-          {unreadCount}
-        </span>
+      {unreadCount > 0 ? (
+        <BellDot className="h-4 w-4" />
+      ) : (
+        <Bell className="h-4 w-4" />
       )}
       {isOpen && user &&
         <NotificationPopup 

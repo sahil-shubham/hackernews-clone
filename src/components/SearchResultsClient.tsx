@@ -38,31 +38,6 @@ const SearchResultsClient: React.FC<SearchResultsClientProps> = ({
     setPagination(initialPagination);
   }, [initialPagination]);
 
-  const handleVote = useCallback(async (postId: string, voteType: 'UPVOTE' | 'DOWNVOTE') => {
-    if (!currentUser) {
-      router.push('/login');
-      return;
-    }
-    try {
-      const response = await fetch(`/api/posts/${postId}/vote`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ voteType }),
-      });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Failed to vote' }));
-        throw new Error(errorData.message);
-      }
-      const updatedPostFromServer = await response.json();
-      setPosts(prevPosts => 
-        prevPosts.map(p => p.id === postId ? { ...p, ...updatedPostFromServer.post } : p)
-      );
-    } catch (error) {
-      console.error('Error voting:', error);
-      alert((error as Error).message || 'Could not submit vote.');
-    }
-  }, [currentUser, router]);
-
   const handlePageChange = (newPage: number) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set('page', newPage.toString());
@@ -87,7 +62,6 @@ const SearchResultsClient: React.FC<SearchResultsClientProps> = ({
 
       <PostList 
         posts={posts} 
-        onVote={handleVote} 
         user={currentUser} 
       />
 
