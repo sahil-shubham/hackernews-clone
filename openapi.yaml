@@ -1,0 +1,422 @@
+openapi: 3.0.0
+info:
+  title: HackerNews Clone API
+  version: v1.0.0
+  description: API for the HackerNews Clone application.
+
+servers:
+  - url: /api
+
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the user.
+          example: clxkq47f3000008l4g3h1e2r3
+        email:
+          type: string
+          format: email
+          description: User's email address.
+          example: user@example.com
+        username:
+          type: string
+          description: User's unique username.
+          example: testuser
+      required:
+        - id
+        - email
+        - username
+
+    NewUserInput:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          description: User's email address.
+          example: user@example.com
+        username:
+          type: string
+          minLength: 3
+          maxLength: 20
+          description: User's unique username.
+          example: newuser123
+        password:
+          type: string
+          minLength: 6
+          description: User's password.
+          example: securepassword123
+      required:
+        - email
+        - username
+        - password
+
+    LoginInput:
+      type: object
+      properties:
+        emailOrUsername:
+          type: string
+          description: User's email address or username.
+          example: user@example.com
+        password:
+          type: string
+          description: User's password.
+          example: securepassword123
+      required:
+        - emailOrUsername
+        - password
+        
+    AuthResponse:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        token:
+          type: string
+          description: JWT authentication token.
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+      required:
+        - user
+        - token
+
+    Notification:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the notification.
+          example: clxkr5tmg000108kz6q7h3f8d
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp of when the notification was created.
+        read:
+          type: boolean
+          description: Whether the notification has been read.
+        type:
+          type: string
+          description: Type of notification.
+          enum:
+            - NEW_COMMENT_ON_POST
+            - REPLY_TO_COMMENT
+          example: NEW_COMMENT_ON_POST
+        triggeringUser:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: string
+              example: clxkq47f3000008l4g3h1e2r3
+            username:
+              type: string
+              example: anotheruser
+          required:
+            - id
+            - username
+        post:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: string
+              example: clxks12ab000208l5h9f2d4e5
+            title:
+              type: string
+              example: My Awesome Post Title
+          required:
+            - id
+            - title
+        comment:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: string
+              example: clxkt67cd000308m6e1g4h5j6
+            textContent:
+              type: string
+              nullable: true
+              description: First 100 characters of the comment.
+              example: This is a great comment...
+          required:
+            - id
+            # textContent can be null
+            
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: A brief error message.
+      required:
+        - error
+
+    ValidationErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: A brief error message (e.g., "Invalid input").
+        details:
+          type: object # Zod error format
+          description: Detailed validation errors.
+      required:
+        - error
+
+  securitySchemes:
+    UserIdHeader:
+      type: apiKey
+      in: header
+      name: x-user-id # Or X-User-Id depending on actual implementation
+      description: User ID for operations requiring authenticated user context but not using bearer token directly (e.g. notifications).
+
+paths:
+  /auth/signup:
+    post:
+      summary: Register a new user
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewUserInput'
+      responses:
+        '201':
+          description: User created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Invalid input.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+        '409':
+          description: Email or username already exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/login:
+    post:
+      summary: Log in an existing user
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginInput'
+      responses:
+        '200':
+          description: User logged in successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Invalid input.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+        '401':
+          description: Invalid credentials.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/logout:
+    post:
+      summary: Log out the current user
+      tags:
+        - Authentication
+      responses:
+        '200':
+          description: Logged out successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Logged out successfully
+        '500':
+          description: Internal server error during logout.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /notifications:
+    get:
+      summary: Get notifications for the authenticated user
+      tags:
+        - Notifications
+      security:
+        - UserIdHeader: []
+      parameters:
+        - name: page
+          in: query
+          description: Page number for pagination.
+          required: false
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: limit
+          in: query
+          description: Number of notifications per page.
+          required: false
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: A list of notifications.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  notifications:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Notification'
+                  page:
+                    type: integer
+                    example: 1
+                  limit:
+                    type: integer
+                    example: 20
+                  totalPages:
+                    type: integer
+                    example: 5
+                  totalNotifications:
+                    type: integer
+                    example: 95
+        '400':
+          description: Invalid query parameters.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+        '401':
+          description: Unauthorized. User not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Failed to fetch notifications.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /notifications/{notificationId}:
+    patch:
+      summary: Mark a specific notification as read
+      tags:
+        - Notifications
+      security:
+        - UserIdHeader: []
+      parameters:
+        - name: notificationId
+          in: path
+          required: true
+          description: ID of the notification to mark as read.
+          schema:
+            type: string
+            example: clxkr5tmg000108kz6q7h3f8d
+      responses:
+        '200':
+          description: Notification marked as read (or was already read).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notification' # Returns the updated/current notification
+        '401':
+          description: Unauthorized. User not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden. User does not have permission.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Notification not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Failed to mark notification as read.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /notifications/mark-all-as-read:
+    post:
+      summary: Mark all unread notifications as read for the authenticated user
+      tags:
+        - Notifications
+      security:
+        - UserIdHeader: []
+      responses:
+        '200':
+          description: All unread notifications marked as read.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: All unread notifications marked as read.
+                  count:
+                    type: integer
+                    description: Number of notifications updated.
+                    example: 5
+        '401':
+          description: Unauthorized. User not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Failed to mark all notifications as read.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse' 
