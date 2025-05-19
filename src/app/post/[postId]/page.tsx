@@ -1,286 +1,138 @@
-'use client'
+import { Suspense } from 'react'
+import { notFound } from 'next/navigation'
+import { cookies } from 'next/headers'
+import PostDetailPageClient from '@/components/post/PostDetailPageClient'
+import { getServerSideUser } from '@/lib/authUtils'
+import type { Post as PostType } from '@/types/post'
+import type { Comment as CommentType } from '@/types/comment'
+import { PageContainer } from '@/components/ui/layout'
 
-import { useState, useEffect } from 'react'
-import { useParams } from 'next/navigation'
-import { formatDistanceToNow } from 'date-fns'
-import { useAuth } from '@/hooks/useAuth'
-import CommentForm from '@/components/comment/CommentForm'
-import CommentItem, { Comment } from '@/components/comment/CommentItem'
-import * as Styled from '@/styles/components'
+const LoadingSkeleton = () => (
+  <PageContainer className="py-8">
+    <div className="animate-pulse bg-card p-6 rounded-lg shadow border border-border">
+      <div className="h-8 bg-muted rounded w-3/4 mb-4"></div>
+      <div className="h-4 bg-muted rounded w-1/2 mb-2"></div>
+      <div className="h-4 bg-muted rounded w-full mb-2"></div>
+      <div className="h-4 bg-muted rounded w-full mb-4"></div>
+      <div className="h-4 bg-muted rounded w-1/4"></div>
+    </div>
+    <div className="animate-pulse bg-card p-6 rounded-lg shadow mt-8 border border-border">
+      <div className="h-6 bg-muted rounded w-1/3 mb-6"></div>
+      <div className="h-10 bg-muted rounded w-full mb-4"></div>
+      <div className="space-y-4">
+        {[1, 2].map(i => (
+          <div key={i} className="p-4 border border-border rounded-md">
+            <div className="h-4 bg-muted rounded w-1/4 mb-2"></div>
+            <div className="h-4 bg-muted rounded w-full"></div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </PageContainer>
+)
 
-export default function PostDetailPage() {
-  const { postId } = useParams()
-  const { user, token } = useAuth()
+async function fetchPostDetails(postId: string, userToken: string | null): Promise<PostType | null> {
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000'
+  const headers: HeadersInit = {}
+  // The middleware handles cookie-based auth for API routes,
+  // but if calling an external API that needs a Bearer token, it would be added here.
+  // For internal API calls, cookies are forwarded by default by Next.js fetch running on server.
+  // If we want to explicitly pass the user's cookie for internal API that relies on it (not x-user-id):
+  // const cookieStore = cookies()
+  // const authToken = cookieStore.get('auth-token')
+  // if (authToken) headers.Cookie = `auth-token=${authToken.value}`
 
-  const [post, setPost] = useState<any | null>(null)
-  const [comments, setComments] = useState<Comment[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  // However, our API routes (e.g., GET /api/posts/:id) use x-user-id from middleware
+  // which is derived from the cookie, so explicit token/cookie passing in fetch header might not be needed
+  // if the API route is configured correctly to read `x-user-id`.
+  // Let's assume for now the API route can get user context if needed via middleware + x-user-id.
 
-  // Fetch post and comments
-  useEffect(() => {
-    const fetchPostAndComments = async () => {
-      setLoading(true)
-      setError(null)
-
-      try {
-        const headers: HeadersInit = {}
-        if (token) {
-          headers.Authorization = `Bearer ${token}`
-        }
-
-        // Fetch post details
-        const postResponse = await fetch(`/api/posts/${postId}`, {
-          headers
-        })
-
-        if (!postResponse.ok) {
-          throw new Error('Failed to fetch post')
-        }
-
-        const postData = await postResponse.json()
-        setPost(postData)
-
-        // Fetch comments
-        const commentsResponse = await fetch(`/api/posts/${postId}/comments`, {
-          headers
-        })
-
-        if (!commentsResponse.ok) {
-          throw new Error('Failed to fetch comments')
-        }
-
-        const commentsData = await commentsResponse.json()
-        setComments(commentsData.comments)
-      } catch (err) {
-        console.error('Error fetching post details:', err)
-        setError('Failed to load post. Please try again.')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    if (postId) {
-      fetchPostAndComments()
-    }
-  }, [postId, token])
-
-  // Handle comment voting
-  const handleCommentVote = async (commentId: string, voteType: 'UPVOTE' | 'DOWNVOTE') => {
-    if (!user || !token) return
-
-    try {
-      const response = await fetch(`/api/comments/${commentId}/vote`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ voteType })
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to vote on comment')
-      }
-
-      // Update comment in the UI
-      setComments((prevComments) => updateCommentVote(prevComments, commentId, voteType))
-    } catch (err) {
-      console.error('Error voting on comment:', err)
-    }
-  }
-
-  // Update comment vote in UI
-  const updateCommentVote = (comments: Comment[], commentId: string, voteType: 'UPVOTE' | 'DOWNVOTE'): Comment[] => {
-    return comments.map((comment) => {
-      if (comment.id === commentId) {
-        // If user already voted with the same vote type, we're removing the vote
-        return {
-          ...comment,
-          points: comment.voteType === voteType ? comment.points - 1 : comment.points + 1,
-          voteType: comment.voteType === voteType ? null : voteType,
-          hasVoted: comment.voteType !== voteType
-        }
-      } else if (comment.replies && comment.replies.length > 0) {
-        // Check in replies recursively
-        return {
-          ...comment,
-          replies: updateCommentVote(comment.replies, commentId, voteType)
-        }
-      }
-      return comment
+  try {
+    const response = await fetch(`${apiBaseUrl}/api/posts/${postId}`, { 
+      headers, 
+      cache: 'no-store' // Or specific caching strategy
     })
-  }
-
-  // Add new comment
-  const handleAddComment = async (text: string) => {
-    if (!user || !token) return
-
-    try {
-      const response = await fetch(`/api/posts/${postId}/comments`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ textContent: text })
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to post comment')
-      }
-
-      const newComment = await response.json()
-
-      // Add new comment to the UI
-      setComments((prevComments) => [
-        ...prevComments,
-        {
-          ...newComment,
-          points: 0,
-          replies: []
-        }
-      ])
-    } catch (err) {
-      console.error('Error adding comment:', err)
-      throw err
+    if (response.status === 404) return null
+    if (!response.ok) {
+      const errorBody = await response.text()
+      console.error(`API Error (${response.status}) fetching post ${postId}: ${errorBody}`)
+      throw new Error(`Failed to fetch post details: ${response.status}`)
     }
+    return response.json()
+  } catch (error) {
+    console.error(`Network/Fetch Error for post ${postId}:`, error)
+    throw error // Rethrow to be caught by page
   }
+}
 
-  // Handle comment reply
-  const handleCommentReply = async (parentId: string, text: string) => {
-    if (!user || !token) return
+async function fetchPostComments(postId: string, userToken: string | null): Promise<CommentType[]> {
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000'
+  const headers: HeadersInit = {}
+  // Similar consideration for headers as in fetchPostDetails
 
-    try {
-      const response = await fetch(`/api/posts/${postId}/comments`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          textContent: text,
-          parentId
-        })
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to post reply')
-      }
-
-      const newComment = await response.json()
-
-      // Add reply to the UI
-      setComments((prevComments) =>
-        addReplyToComment(prevComments, parentId, {
-          ...newComment,
-          points: 0,
-          replies: []
-        })
-      )
-    } catch (err) {
-      console.error('Error adding reply:', err)
-      throw err
-    }
-  }
-
-  // Add reply to comment recursively
-  const addReplyToComment = (comments: Comment[], parentId: string, newReply: Comment): Comment[] => {
-    return comments.map((comment) => {
-      if (comment.id === parentId) {
-        return {
-          ...comment,
-          replies: [...(comment.replies || []), newReply]
-        }
-      } else if (comment.replies && comment.replies.length > 0) {
-        return {
-          ...comment,
-          replies: addReplyToComment(comment.replies, parentId, newReply)
-        }
-      }
-      return comment
+  try {
+    const response = await fetch(`${apiBaseUrl}/api/posts/${postId}/comments`, { 
+      headers, 
+      cache: 'no-store' // Or specific caching strategy
     })
+    if (!response.ok) {
+      const errorBody = await response.text()
+      console.error(`API Error (${response.status}) fetching comments for post ${postId}: ${errorBody}`)
+      throw new Error(`Failed to fetch comments: ${response.status}`)
+    }
+    const data = await response.json()
+    return data.comments || [] // API returns { comments: [...] }
+  } catch (error) {
+    console.error(`Network/Fetch Error for comments on post ${postId}:`, error)
+    throw error // Rethrow to be caught by page
+  }
+}
+
+interface PostDetailPageProps {
+  params: Promise<{ postId: string } | undefined>;
+}
+
+export default async function PostDetailPage({ params: paramsPromise }: PostDetailPageProps) {
+  const params = await paramsPromise;
+  if (!params) {
+    notFound();
+  }
+  const { postId } = params;
+  const currentUser = await getServerSideUser();
+
+  // Fetch data in parallel
+  const [postResult, commentsResult] = await Promise.allSettled([
+    fetchPostDetails(postId, currentUser?.token || null),
+    fetchPostComments(postId, currentUser?.token || null)
+  ])
+
+  const post = postResult.status === 'fulfilled' ? postResult.value : null
+  // If fetching post details failed critically (not just 404), we might want to throw or show error page.
+  if (postResult.status === 'rejected') {
+    console.error("Failed to load post details:", postResult.reason)
+    // Optionally, render an error page or throw to trigger Next.js error boundary
+    // For now, if post is null, PostDetailPageClient will handle it (shows "Post not found").
+  }
+  
+  if (!post) {
+    notFound() // Triggers Next.js 404 page
   }
 
-  // Loading state
-  if (loading) {
-    return (
-      <Styled.PageContainer>
-        <Styled.LoadingContainer>
-          <Styled.LoadingTitle />
-          <Styled.LoadingSubtitle />
-          <Styled.LoadingContent />
-        </Styled.LoadingContainer>
-      </Styled.PageContainer>
-    )
+  const comments = commentsResult.status === 'fulfilled' ? commentsResult.value : []
+  if (commentsResult.status === 'rejected') {
+    console.error("Failed to load comments:", commentsResult.reason)
+    // Comments failing to load might not be as critical as post failing.
+    // We proceed with empty comments array and log error.
   }
-
-  // Error state
-  if (error || !post) {
-    return (
-      <Styled.PageContainer>
-        <Styled.ErrorContainer>{error || 'Post not found'}</Styled.ErrorContainer>
-        <Styled.StyledLink href="/">Back to home</Styled.StyledLink>
-      </Styled.PageContainer>
-    )
-  }
-
-  // Format the domain from URL if present
-  const domain = post.url ? new URL(post.url).hostname.replace(/^www\./, '') : null
-
-  // Format the time since post creation
-  const timeAgo = formatDistanceToNow(new Date(post.createdAt), {
-    addSuffix: true
-  })
 
   return (
-    <Styled.PageContainer>
-      {/* Post details */}
-      <Styled.PostCard>
-        <Styled.PostTitle level={1}>{post.title}</Styled.PostTitle>
-
-        {post.url && (
-          <Styled.PostUrl href={post.url} target="_blank" rel="noopener noreferrer">
-            {domain && `(${domain})`}
-          </Styled.PostUrl>
-        )}
-
-        {post.textContent && (
-          <Styled.PostContent>
-            <Styled.PreformattedText>{post.textContent}</Styled.PreformattedText>
-          </Styled.PostContent>
-        )}
-
-        <Styled.PostMeta>
-          <span>{post.points} points</span>
-          <Styled.MetaSeparator>•</Styled.MetaSeparator>
-          <span>by {post.author.username}</span>
-          <Styled.MetaSeparator>•</Styled.MetaSeparator>
-          <span>{timeAgo}</span>
-          <Styled.MetaSeparator>•</Styled.MetaSeparator>
-          <span>{post.commentCount} comments</span>
-        </Styled.PostMeta>
-      </Styled.PostCard>
-
-      {/* Comment form */}
-      <CommentForm postId={postId as string} onAddComment={handleAddComment} />
-
-      {/* Display comments */}
-      <Styled.CommentsSection>
-        <Styled.CommentsSectionHeader>
-          <Styled.CommentsHeading>Comments {comments.length > 0 && `(${comments.length})`}</Styled.CommentsHeading>
-        </Styled.CommentsSectionHeader>
-
-        {comments.length === 0 ? (
-          <Styled.NoCommentsMessage>No comments yet. Be the first to comment!</Styled.NoCommentsMessage>
-        ) : (
-          <Styled.CommentsContainer>
-            {comments.map((comment) => (
-              <CommentItem key={comment.id} comment={comment} onVote={handleCommentVote} onReply={handleCommentReply} />
-            ))}
-          </Styled.CommentsContainer>
-        )}
-      </Styled.CommentsSection>
-    </Styled.PageContainer>
+    <Suspense fallback={<LoadingSkeleton />}>
+      <PostDetailPageClient
+        initialPost={post}
+        initialComments={comments}
+        currentUser={currentUser}
+        postId={postId}
+      />
+    </Suspense>
   )
 }

@@ -1,17 +1,17 @@
-'use client'
-
 import LoginForm from '@/components/auth/LoginForm'
-import * as Styled from '@/styles/components'
+import { PageContainer, FlexContainer } from '@/components/ui/layout'
+import { Text } from '@/components/ui/typography'
+import Link from 'next/link'
 
 export default function LoginPage() {
   return (
-    <Styled.PageContainer>
+    <PageContainer className="flex flex-col items-center justify-center py-12">
       <LoginForm />
-      <Styled.FlexContainer $justify="center" $direction="row">
-        <Styled.Text $size="md">
-          Don&apos;t have an account? <Styled.StyledLink href="/signup">Sign up</Styled.StyledLink>
-        </Styled.Text>
-      </Styled.FlexContainer>
-    </Styled.PageContainer>
+      <FlexContainer justify="center" direction="row" className="mt-8">
+        <Text size="base">
+          Don&apos;t have an account? <Link href="/signup" className="font-medium text-primary hover:underline">Sign up</Link>
+        </Text>
+      </FlexContainer>
+    </PageContainer>
   )
 }

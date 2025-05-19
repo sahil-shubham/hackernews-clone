@@ -1,220 +1,107 @@
-'use client';
+import { Suspense } from 'react';
+// import { cookies } from 'next/headers'; // No longer needed here directly
+import HomePageClient from '@/components/HomePageClient';
+import type { Post } from '@/types/post'; // Ensure Post type is available
+// import type { User } from '@/hooks/useAuthStore'; // User type will come via getServerSideUser
+import { getServerSideUser } from '@/lib/authUtils'; // Import the new utility
 
-import { useState, useEffect, Suspense } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
-import PostList from '@/components/post/PostList';
-import { Post } from '@/components/post/PostItem';
-import { useAuth } from '@/hooks/useAuth';
-import styled from 'styled-components';
-import { PageContainer } from '@/styles/StyledComponents';
+// // Helper function to get user from cookies (replace with your actual auth logic)
+// async function getServerSideUser(): Promise<User | null> { // REMOVE THIS LOCAL DEFINITION
+//   const cookieStore = await cookies(); 
+//   const tokenCookie = cookieStore.get('authToken');
+// 
+//   if (tokenCookie?.value) {
+//     try {
+//       // SIMULATED: Replace with actual token verification and user data retrieval
+//       return {
+//         id: 'server-user-id',
+//         username: 'ServerUser',
+//         email: 'server@example.com',
+//         token: tokenCookie.value,
+//       };
+//     } catch (error) {
+//       console.error("Error processing token:", error);
+//       return null;
+//     }
+//   }
+//   return null;
+// }
 
-// Styled components for this page
-const ErrorAlert = styled.div`
-  background-color: #fee2e2;
-  border: 1px solid ${props => props.theme.colors.error};
-  color: ${props => props.theme.colors.error};
-  padding: ${props => props.theme.space.md};
-  border-radius: ${props => props.theme.radii.md};
-  margin-bottom: ${props => props.theme.space.lg};
-`;
-
-const PaginationContainer = styled.div`
-  display: flex;
-  justify-content: center;
-  padding: ${props => props.theme.space.lg} 0;
-`;
-
-const PageButtons = styled.div`
-  display: flex;
-  gap: ${props => props.theme.space.sm};
-`;
-
-const PageButton = styled.button<{ active?: boolean }>`
-  padding: ${props => `${props.theme.space.xs} ${props.theme.space.md}`};
-  border: 1px solid ${props => props.theme.colors.secondaryLight};
-  border-radius: ${props => props.theme.radii.sm};
-  font-size: ${props => props.theme.fontSizes.sm};
-  background-color: ${props => props.active ? props.theme.colors.primary : props.theme.colors.white};
-  color: ${props => props.active ? props.theme.colors.white : 'inherit'};
-  
-  &:hover {
-    background-color: ${props => props.active ? props.theme.colors.primary : '#f9fafb'};
-  }
-`;
-
-function Home() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const { user, token } = useAuth();
-
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  
-  const [pagination, setPagination] = useState({
-    page: 1,
-    totalPages: 1,
-    totalPosts: 0,
+async function fetchPostsData(page: number, sort: string, searchQuery: string, userToken: string | null) {
+  const queryParams = new URLSearchParams({
+    page: page.toString(),
+    sort,
+    limit: '30',
   });
+  if (searchQuery) queryParams.set('search', searchQuery);
 
-  // Get current query parameters for fetching
-  const page = Number(searchParams.get('page') || '1');
-  const sort = searchParams.get('sort') || 'new';
-  const searchQueryFromUrl = searchParams.get('search') || ''; // Reactive to URL changes
+  const headers: HeadersInit = {};
+  if (userToken) headers.Authorization = `Bearer ${userToken}`;
+  
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000'; 
+  const fetchUrl = `${apiBaseUrl}/api/posts?${queryParams.toString()}`;
 
-  // Fetch posts when query parameters change
-  useEffect(() => {
-    const fetchPosts = async () => {
-      setLoading(true);
-      setError(null);
-      
+  try {
+    const response = await fetch(fetchUrl, { headers, cache: 'no-store' });
+    if (!response.ok) {
+      const errorBody = await response.text(); 
+      console.error(`API Error (${response.status}) fetching posts from ${fetchUrl}: ${errorBody}`);
       try {
-        const queryParams = new URLSearchParams({
-          page: page.toString(),
-          sort,
-          limit: '30',
-        });
-        
-        // Use the searchQueryFromUrl which is always synced with the URL
-        if (searchQueryFromUrl) {
-          queryParams.set('search', searchQueryFromUrl);
-        }
-        
-        const headers: HeadersInit = {};
-        if (token) {
-          headers.Authorization = `Bearer ${token}`;
-        }
-        
-        const response = await fetch(`/api/posts?${queryParams.toString()}`, {
-          headers,
-        });
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch posts');
-        }
-        
-        const data = await response.json();
-        setPosts(data.posts);
-        setPagination({
-          page: data.page,
-          totalPages: data.totalPages,
-          totalPosts: data.totalPosts,
-        });
-      } catch (err) {
-        console.error('Error fetching posts:', err);
-        setError('Failed to load posts. Please try again.');
-      } finally {
-        setLoading(false);
+        const errorJson = JSON.parse(errorBody);
+        throw new Error(errorJson.message || `API error: ${response.status}`);
+      } catch (e) {
+        throw new Error(`API error: ${response.status} - ${errorBody}`);
       }
-    };
-    
-    fetchPosts();
-  }, [page, sort, token, searchQueryFromUrl]); // Depend on searchQueryFromUrl
-
-  // Handle post voting
-  const handleVote = async (postId: string, voteType: 'UPVOTE' | 'DOWNVOTE') => {
-    if (!user || !token) return;
-    
-    try {
-      const response = await fetch(`/api/posts/${postId}/vote`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ voteType }),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to vote on post');
-      }
-      
-      // Update post in the UI
-      setPosts(prevPosts => 
-        prevPosts.map(post => {
-          if (post.id === postId) {
-            // If user already voted with the same vote type, we're removing the vote
-            const voteDelta = (post.voteType === voteType) ? -1 : (post.voteType ? 0 : 1);
-            return {
-              ...post,
-              points: post.voteType === voteType ? post.points - 1 : post.points + 1,
-              voteType: post.voteType === voteType ? null : voteType,
-              hasVoted: post.voteType !== voteType,
-            };
-          }
-          return post;
-        })
-      );
-    } catch (err) {
-      console.error('Error voting on post:', err);
     }
-  };
-
-  // Pagination navigation
-  const goToPage = (pageNum: number) => {
-    const currentParams = new URLSearchParams(window.location.search);
-    currentParams.set('page', pageNum.toString());
-    router.push(`/?${currentParams.toString()}`);
-  };
-
-  return (
-    <PageContainer>
-      {/* Error message */}
-      {error && <ErrorAlert>{error}</ErrorAlert>}
-      
-      {/* Post list */}
-      <PostList posts={posts} loading={loading} onVote={handleVote} />
-      
-      {/* Pagination */}
-      {!loading && pagination.totalPages > 1 && (
-        <PaginationContainer>
-          <PageButtons>
-            {page > 1 && (
-              <PageButton onClick={() => goToPage(page - 1)}>
-                Previous
-              </PageButton>
-            )}
-            
-            {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-              // Calculate page numbers to show (show 5 pages max)
-              let pageNum;
-              if (pagination.totalPages <= 5) {
-                pageNum = i + 1;
-              } else if (page <= 3) {
-                pageNum = i + 1;
-              } else if (page >= pagination.totalPages - 2) {
-                pageNum = pagination.totalPages - 4 + i;
-              } else {
-                pageNum = page - 2 + i;
-              }
-              
-              return (
-                <PageButton
-                  key={i}
-                  active={pageNum === page}
-                  onClick={() => goToPage(pageNum)}
-                >
-                  {pageNum}
-                </PageButton>
-              );
-            })}
-            
-            {page < pagination.totalPages && (
-              <PageButton onClick={() => goToPage(page + 1)}>
-                Next
-              </PageButton>
-            )}
-          </PageButtons>
-        </PaginationContainer>
-      )}
-    </PageContainer>
-  );
+    return response.json();
+  } catch (error: any) {
+    console.error(`Network/Fetch Error for ${fetchUrl}:`, error);
+    throw new Error(error.message || "Failed to fetch posts due to network or parsing issue.");
+  }
 }
 
-export default function HomeWrapper() {
+interface PageProps {
+  // searchParams is now a Promise that resolves to the search parameters object
+  searchParams: Promise<{ [key: string]: string | string[] | undefined } | undefined>;
+}
+
+// This is the main Server Component for the page
+export default async function Page({ searchParams: searchParamsPromise }: PageProps) {
+  const searchParams = await searchParamsPromise;
+
+  // Handle single or array values for params, taking the first if it's an array
+  const pageParam = searchParams?.page;
+  const sortParam = searchParams?.sort;
+  const searchParam = searchParams?.search;
+
+  const page = Number((Array.isArray(pageParam) ? pageParam[0] : pageParam) || '1');
+  const sort = (Array.isArray(sortParam) ? sortParam[0] : sortParam) || 'new';
+  const searchQuery = (Array.isArray(searchParam) ? searchParam[0] : searchParam) || '';
+
+  const initialUser = await getServerSideUser(); // Uses the imported version
+
+  let initialPosts: Post[] = [];
+  let initialPagination = { page: 1, totalPages: 1, totalPosts: 0 };
+  let initialError: string | null = null;
+
+  try {
+    const data = await fetchPostsData(page, sort, searchQuery, initialUser?.token || null);
+    initialPosts = data.posts;
+    initialPagination = { page: data.page, totalPages: data.totalPages, totalPosts: data.totalPosts };
+  } catch (err: any) {
+    console.error('Page level error fetching posts:', err);
+    initialError = err.message || 'Failed to load posts.';
+    initialPosts = [];
+  }
+
   return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <Home />
+    <Suspense fallback={<div className="container mx-auto px-4 py-lg max-w-4xl">Loading...</div>}> 
+      <HomePageClient
+        initialPosts={initialPosts}
+        initialPagination={initialPagination}
+        initialError={initialError}
+        initialUser={initialUser}
+      />
     </Suspense>
   );
 }

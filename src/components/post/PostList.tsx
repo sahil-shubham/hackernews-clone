@@ -1,60 +1,31 @@
-'use client';
+import PostItem from './PostItem';
+import type { Post as PostType } from '@/types/post';
+import { User } from '@/lib/authUtils';
 
-import React from 'react';
-import PostItem, { Post } from './PostItem';
-import * as Styled from "@/styles/components"
-import { useAuthStore } from '@/hooks/useAuthStore';
 interface PostListProps {
-  posts: Post[];
-  loading?: boolean;
-  onVote?: (postId: string, voteType: 'UPVOTE' | 'DOWNVOTE') => Promise<void>;
+  posts: PostType[];
+  onVote: (postId: string, voteType: 'UPVOTE' | 'DOWNVOTE') => Promise<void>;
+  user: User | null;
 }
 
-export default function PostList({ posts, loading = false, onVote }: PostListProps) {
-  const user = useAuthStore((state) => state.user);
+const PostList: React.FC<PostListProps> = ({ posts, onVote, user }) => {
 
-  if (loading) {
-    return (
-      <div>
-        <Styled.PostListContainer>
-          {[...Array(10)].map((_, index) => (
-            <Styled.LoadingPostItem key={index}>
-              <Styled.LoadingPostTitle />
-              <Styled.LoadingPostSubtitle />
-            </Styled.LoadingPostItem>
-          ))}
-        </Styled.PostListContainer>
-      </div>
-    );
-  }
-
-  if (posts.length === 0) {
-    return (
-      <div>
-        <Styled.EmptyPostStateContainer>
-          <Styled.EmptyPostStateHeading>No posts found</Styled.EmptyPostStateHeading>
-          {user && (
-            <Styled.EmptyPostStateText>
-              Be the first to submit a post!
-            </Styled.EmptyPostStateText>
-          )}
-        </Styled.EmptyPostStateContainer>
-      </div>
-    );
+  if (!posts || posts.length === 0) {
+    return <p className="text-center text-muted-foreground py-8">No posts to display.</p>;
   }
 
   return (
     <div>
-      <Styled.PostListContainer>
-        {posts.map((post, index) => (
-          <PostItem 
-            key={post.id} 
-            post={post} 
-            rank={index + 1}
-            onVote={onVote}
-          />
-        ))}
-      </Styled.PostListContainer>
+      {posts.map((post, index) => (
+        <PostItem
+          key={post.id}
+          post={post}
+          onVote={onVote}
+          user={user}
+        />
+      ))}
     </div>
   );
-} 
+};
+
+export default PostList; 

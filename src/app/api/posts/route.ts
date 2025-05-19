@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
-import redis from '@/lib/redis'; // Import the Redis client
+import { createPostSchema, postSchema} from '@/lib/schemas/post';
 
-const CACHE_TTL_SECONDS = 10 * 60; // 10 minutes
-
-// Validate query parameters with Zod
 const querySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(100).default(30),
@@ -13,52 +10,8 @@ const querySchema = z.object({
   search: z.string().nullable().optional(),
 });
 
-// Validate post creation
-const createPostSchema = z.object({
-  title: z.string().min(1).max(300),
-  url: z.string().url().nullable().optional(),
-  textContent: z.string().nullable().optional(),
-  type: z.enum(['LINK', 'TEXT']),
-}).refine(data => {
-  // Ensure link posts have a URL
-  if (data.type === 'LINK' && !data.url) {
-    return false;
-  }
-  // Ensure text posts have content
-  if (data.type === 'TEXT' && !data.textContent) {
-    return false;
-  }
-  return true;
-}, {
-  message: "Link posts must include a URL, and text posts must include text content",
-});
-
-// Define types for Prisma response
-// type PostWithRelations = Prisma.PostGetPayload<{
-//   include: {
-//     author: {
-//       select: {
-//         id: true;
-//         username: true;
-//       };
-//     };
-//     _count: {
-//       select: {
-//         votes: true;
-//         comments: true;
-//       };
-//     };
-//     votes: {
-//       select: {
-//         voteType: true;
-//       };
-//     };
-//   };
-// }>;
-
 export async function GET(request: NextRequest) {
   try {
-    // Parse query parameters
     const url = new URL(request.url);
     const parsed = querySchema.safeParse({
       page: url.searchParams.get('page'),
@@ -76,39 +29,16 @@ export async function GET(request: NextRequest) {
 
     const { page, limit, sort, search } = parsed.data;
 
-    // Only cache the first page for the specified sort orders
-    // const canCache = page === 1 && ['new', 'top', 'best'].includes(sort) && redis;
-    // const cacheKey = canCache ? `posts:${sort}:page:1:limit:${limit}` : null;
-
-    // if (canCache && cacheKey) {
-    //   try {
-    //     const cachedData = await redis?.get(cacheKey);
-    //     if (cachedData) {
-    //       console.log(`Cache HIT for key: ${cacheKey}`);
-    //       return NextResponse.json(JSON.parse(cachedData));
-    //     }
-    //     console.log(`Cache MISS for key: ${cacheKey}`);
-    //   } catch (cacheError) {
-    //     console.error(`Redis GET error for key ${cacheKey}:`, cacheError);
-    //     // Proceed to fetch from DB if cache read fails
-    //   }
-    // }
 
     const skip = (page - 1) * limit;
 
-    // Get userId from header if available (set by middleware)
     const userId = request.headers.get('x-user-id');
 
-    // Create base query
     const where: any = {};
     if (search) {
-      // Prepare search term for PostgreSQL FTS: replace spaces with '&' for AND logic
-      // Also, escape special FTS characters if necessary, though for simple terms this might be enough.
-      // More robust parsing might involve splitting by space and joining with ' & '
-      // or handling quotes for phrase searches, etc.
       const ftsSearchTerm = search.trim().split(/\s+/).join(' & ');
       
-      if (ftsSearchTerm) { // Ensure the term is not empty after processing
+      if (ftsSearchTerm) {
         where.OR = [
           { title: { search: ftsSearchTerm } },
           { textContent: { search: ftsSearchTerm } },
@@ -116,7 +46,6 @@ export async function GET(request: NextRequest) {
       }
     }
     
-    // Define sort order based on sort parameter
     let orderBy: any = {};
     
     switch (sort) {
@@ -124,8 +53,6 @@ export async function GET(request: NextRequest) {
         orderBy = { createdAt: 'desc' };
         break;
       case 'top':
-        // For simplicity, we'll do a basic score sort.
-        // In a real app, you'd implement a more sophisticated algorithm
         orderBy = [
           { votes: { _count: 'desc' } },
           { createdAt: 'desc' }
@@ -177,19 +104,22 @@ export async function GET(request: NextRequest) {
     const transformedPosts = posts.map((post: any) => {
       const userVote = post.votes && post.votes.length > 0 ? post.votes[0] : null;
       
-      return {
+      const postData = {
         id: post.id,
         title: post.title,
         url: post.url,
         textContent: post.textContent,
         type: post.type,
         author: post.author,
-        points: post._count.votes, // In a real app, you'd count upvotes - downvotes
+        points: post._count.votes,
         commentCount: post._count.comments,
         createdAt: post.createdAt,
         voteType: userVote?.voteType || null,
         hasVoted: Boolean(userVote),
       };
+      // Optional: Validate each transformed post against the schema for extra safety
+      // fetchedPostSchema.parse(postData); 
+      return postData;
     });
 
     // Calculate pagination information
@@ -235,6 +165,7 @@ export async function POST(request: NextRequest) {
     }
     
     const body = await request.json();
+    // Use the imported createPostSchema
     const result = createPostSchema.safeParse(body);
     
     if (!result.success) {
@@ -259,34 +190,34 @@ export async function POST(request: NextRequest) {
     });
 
     // Invalidate relevant caches when a new post is created
-    if (redis) {
-      const cacheKeysToInvalidate = [
-        `posts:new:page:1:limit:30`, // Assuming default limit is 30
-        // Add other relevant keys, e.g., if the new post immediately affects 'top' or 'best' (though less likely for a brand new post)
-      ];
-      // More sophisticated: could also try to update the cache if it's simple enough, but invalidation is safer.
-      // Consider also invalidating for different limit parameters if you cache those.
-      // For now, we only cache page 1 with the default limit for new/top/best.
-      // So, if limit changes, it won't hit this specific cache key anyway.
+    // if (redis) {
+    //   const cacheKeysToInvalidate = [
+    //     `posts:new:page:1:limit:30`, // Assuming default limit is 30
+    //     // Add other relevant keys, e.g., if the new post immediately affects 'top' or 'best' (though less likely for a brand new post)
+    //   ];
+    //   // More sophisticated: could also try to update the cache if it's simple enough, but invalidation is safer.
+    //   // Consider also invalidating for different limit parameters if you cache those.
+    //   // For now, we only cache page 1 with the default limit for new/top/best.
+    //   // So, if limit changes, it won't hit this specific cache key anyway.
 
-      // It might be safer to invalidate all primary list caches for simplicity in a take-home:
-      // const cacheKeysToInvalidate = [
-      //  `posts:new:page:1:limit:30`,
-      //  `posts:top:page:1:limit:30`,
-      //  `posts:best:page:1:limit:30`,
-      // ];
-      // This depends on how much precision you need vs. simplicity.
-      // For a take-home, clearing the `new` posts first page is a good start.
+    //   // It might be safer to invalidate all primary list caches for simplicity in a take-home:
+    //   // const cacheKeysToInvalidate = [
+    //   //  `posts:new:page:1:limit:30`,
+    //   //  `posts:top:page:1:limit:30`,
+    //   //  `posts:best:page:1:limit:30`,
+    //   // ];
+    //   // This depends on how much precision you need vs. simplicity.
+    //   // For a take-home, clearing the `new` posts first page is a good start.
 
-      try {
-        for (const key of cacheKeysToInvalidate) {
-          await redis.del(key);
-          console.log(`Cache INVALIDATED for key: ${key} due to new post`);
-        }
-      } catch (cacheError) {
-        console.error('Redis DEL error during post creation:', cacheError);
-      }
-    }
+    //   try {
+    //     for (const key of cacheKeysToInvalidate) {
+    //       await redis.del(key);
+    //       console.log(`Cache INVALIDATED for key: ${key} due to new post`);
+    //     }
+    //   } catch (cacheError) {
+    //     console.error('Redis DEL error during post creation:', cacheError);
+    //   }
+    // }
     
     return NextResponse.json(post, { status: 201 });
   } catch (error) {

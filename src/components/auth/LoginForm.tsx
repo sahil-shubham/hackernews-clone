@@ -3,7 +3,8 @@
 import React, { useState } from 'react';
 import { useAuthAPI } from '@/hooks/useAuthAPI';
 import { useRouter } from 'next/navigation';
-import * as Styled from "@/styles/components"
+import { Heading, ErrorText } from '@/components/ui/typography';
+import { Button } from '@/components/ui/Button';
 
 const LoginForm: React.FC = () => {
   const [emailOrUsername, setEmailOrUsername] = useState('');
@@ -27,9 +28,8 @@ const LoginForm: React.FC = () => {
       setError('');
       
       await login(emailOrUsername, password);
-      
-      // Redirect to home page after successful login
       router.push('/');
+      router.refresh();
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);
@@ -42,46 +42,48 @@ const LoginForm: React.FC = () => {
   };
 
   return (
-    <Styled.FormCard>
-      <Styled.Heading $level={2}>Login</Styled.Heading>
-      <form onSubmit={handleSubmit}>
-        <Styled.FormGroup>
-          <Styled.Label htmlFor="emailOrUsername">
+    <div className="bg-card text-card-foreground shadow-xl rounded-lg p-6 sm:p-8 w-full max-w-md">
+      <Heading as="h2" className="text-2xl font-bold text-center mb-6">Login</Heading>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div>
+          <label htmlFor="emailOrUsername" className="block text-sm font-medium text-foreground mb-1">
             Email or Username
-          </Styled.Label>
-          <Styled.Input
+          </label>
+          <input
             id="emailOrUsername"
             type="text"
             value={emailOrUsername}
             onChange={(e) => setEmailOrUsername(e.target.value)}
             required
+            className="mt-1 block w-full px-3 py-2 bg-background border border-input rounded-md text-sm shadow-sm placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
           />
-        </Styled.FormGroup>
+        </div>
         
-        <Styled.FormGroup>
-          <Styled.Label htmlFor="password">
+        <div>
+          <label htmlFor="password" className="block text-sm font-medium text-foreground mb-1">
             Password
-          </Styled.Label>
-          <Styled.Input
+          </label>
+          <input
             id="password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            className="mt-1 block w-full px-3 py-2 bg-background border border-input rounded-md text-sm shadow-sm placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
           />
-        </Styled.FormGroup>
+        </div>
         
-        <Styled.Button 
+        <Button 
           type="submit" 
           disabled={isSubmitting}
-          $fullWidth
+          className="w-full"
         >
           {isSubmitting ? 'Logging in...' : 'Login'}
-        </Styled.Button>
+        </Button>
         
-        {error && <Styled.ErrorText>{error}</Styled.ErrorText>}
+        {error && <ErrorText className="mt-4 text-center">{error}</ErrorText>}
       </form>
-    </Styled.FormCard>
+    </div>
   );
 };
 

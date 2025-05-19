@@ -1,217 +1,156 @@
-"use client";
-import Link from "next/link";
-import { useAuthStore } from "@/hooks/useAuthStore";
-import { useAuthAPI } from "@/hooks/useAuthAPI";
-import styled from "styled-components";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense } from "react";
-import NotificationBell from "@/components/notifications/NotificationBell";
+'use client'
 
-// Placeholder for a search icon, kept for now, but its toggle is removed
-const SearchIconPlaceholder = () => (
-  <svg
-    data-testid="geist-icon"
-    height="16"
-    stroke-linejoin="round"
-    viewBox="0 0 16 16"
-    width="16"
-    style={{ color: "currentcolor" }}
-  >
-    <path
-      fill-rule="evenodd"
-      clip-rule="evenodd"
-      d="M1.5 6.5C1.5 3.73858 3.73858 1.5 6.5 1.5C9.26142 1.5 11.5 3.73858 11.5 6.5C11.5 9.26142 9.26142 11.5 6.5 11.5C3.73858 11.5 1.5 9.26142 1.5 6.5ZM6.5 0C2.91015 0 0 2.91015 0 6.5C0 10.0899 2.91015 13 6.5 13C8.02469 13 9.42677 12.475 10.5353 11.596L13.9697 15.0303L14.5 15.5607L15.5607 14.5L15.0303 13.9697L11.596 10.5353C12.475 9.42677 13 8.02469 13 6.5C13 2.91015 10.0899 0 6.5 0Z"
-      fill="currentColor"
-    ></path>
-  </svg>
-);
+import type React from 'react'
+import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Search, Check, Sun, Moon } from 'lucide-react'
+import { useTheme } from 'next-themes'
+import { User } from '@/lib/authUtils';
+import { useAuthAPI } from '@/hooks/useAuthAPI'
+import NotificationBell from '@/components/notifications/NotificationBell'
+import { Suspense } from 'react'
 
-const HeaderContainer = styled.header`
-  background-color: ${(props) => props.theme.colors.primary};
-  color: ${(props) => props.theme.colors.white};
-  padding: ${(props) => props.theme.space.md} 0;
-`;
+interface HeaderComponentProps {
+  user: User | null;
+}
 
-const HeaderContent = styled.div`
-  width: 100%;
-  max-width: 1280px;
-  margin: 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 ${(props) => props.theme.space.lg};
-  height: 48px;
-`;
+const HeaderComponent: React.FC<HeaderComponentProps> = ({ user }) => {
+  const router = useRouter()
+  const { logout } = useAuthAPI()
+  const searchParams = useSearchParams()
+  const currentSort = searchParams.get('sort') || 'new'
+  const currentSearchQuery = searchParams.get('search') || ''
 
-const NavLinks = styled.div`
-  display: flex;
-  align-items: center;
-  gap: ${(props) => props.theme.space.lg};
-`;
-
-const Logo = styled(Link)`
-  font-weight: ${(props) => props.theme.fontWeights.bold};
-  font-size: ${(props) => props.theme.fontSizes.lg};
-  color: ${(props) => props.theme.colors.white};
-  &:hover {
-    text-decoration: none;
-  }
-`;
-
-const NavLink = styled(Link)`
-  color: ${(props) => props.theme.colors.white};
-  font-weight: ${(props) => props.theme.fontWeights.medium};
-  font-size: ${(props) => props.theme.fontSizes.sm};
-  &:hover {
-    color: ${(props) => props.theme.colors.primaryLight};
-    text-decoration: none;
-  }
-`;
-
-const UserSection = styled.div`
-  display: flex;
-  align-items: center;
-  gap: ${(props) => props.theme.space.md};
-`;
-
-const UserText = styled.span`
-  font-size: ${(props) => props.theme.fontSizes.sm};
-  color: ${(props) => props.theme.colors.white};
-  font-weight: ${(props) => props.theme.fontWeights.medium};
-`;
-
-const LogoutButton = styled.button`
-  color: ${(props) => props.theme.colors.white};
-  font-weight: ${(props) => props.theme.fontWeights.medium};
-  font-size: ${(props) => props.theme.fontSizes.sm};
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  &:hover {
-    color: ${(props) => props.theme.colors.primaryLight};
-    text-decoration: none;
-  }
-`;
-
-// Moved and new Tab Components
-const TabsBarContainer = styled.div`
-  background-color: ${(props) => props.theme.colors.white};
-  border-bottom: 1px solid ${(props) => props.theme.colors.secondaryLight};
-  padding: 0;
-`;
-
-const SortingTabs = styled.div`
-  display: flex;
-  height: 48px;
-  align-items: flex-end;
-`;
-
-const SortTab = styled.button<{ active: boolean }>`
-  padding: ${(props) => `${props.theme.space.sm} ${props.theme.space.md}`};
-  font-weight: ${(props) => props.theme.fontWeights.medium};
-  color: ${(props) =>
-    props.active
-      ? props.theme.colors.secondaryDark
-      : props.theme.colors.secondary};
-  border-bottom: ${(props) =>
-    props.active
-      ? `2px solid ${props.theme.colors.primary}`
-      : "2px solid transparent"};
-  background-color: transparent;
-  margin-right: ${(props) => props.theme.space.md};
-  height: 100%;
-  display: flex;
-  align-items: center;
-
-  &:hover {
-    color: ${(props) => props.theme.colors.secondaryDark};
-  }
-`;
-
-const Header = () => {
-  const { user } = useAuthStore();
-  const { logout } = useAuthAPI();
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const currentSort = searchParams.get("sort") || "new";
+  const { theme, setTheme } = useTheme()
 
   const handleSortChange = (newSort: string) => {
-    const currentParams = new URLSearchParams(searchParams.toString());
-    currentParams.set("sort", newSort);
-    currentParams.set("page", "1");
-    // If on the search page, preserve the query; otherwise, go to homepage
-    const pathname = window.location.pathname;
-    if (pathname === '/search') {
-        router.push(`/search?${currentParams.toString()}`);
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('sort', newSort)
+    params.set('page', '1')
+
+    const pathname = window.location.pathname
+    if (pathname.startsWith('/search')) {
+      if (currentSearchQuery) params.set('search', currentSearchQuery)
+      else params.delete('search')
+      router.push(`/search?${params.toString()}`)
     } else {
-        // If there was a search term on homepage, remove it when changing sort
-        currentParams.delete("search"); 
-        router.push(`/?${currentParams.toString()}`);
+      params.delete('search')
+      router.push(`/?${params.toString()}`)
     }
-  };
+  }
+
+  const tabs = [
+    { id: 'new', label: 'New' },
+    { id: 'top', label: 'Top' },
+    { id: 'best', label: 'Best' }
+  ]
 
   return (
-    <div>
-      <HeaderContainer>
-        <HeaderContent>
-          <NavLinks>
-            <Logo href="/">Hacker News</Logo>
-            <NavLink href="/submit">submit</NavLink>
-            <NavLink href="/search">search</NavLink>
-          </NavLinks>
+    <header className="bg-primary text-primary-foreground">
+      <div className="container mx-auto px-4 max-w-5xl flex items-center justify-between h-14">
+        <div className="flex items-center justify-between h-14">
+          <Link
+            href="/"
+            className="text-xl font-bold relative group focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded px-1"
+          >
+            Hacker News
+          </Link>
+          <Link
+            href="/submit"
+            className="text-sm relative group focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded px-1"
+          >
+            submit
+            <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary-foreground/70 transition-all group-hover:w-full"></span>
+          </Link>
+        </div>
+        <div className="flex items-center space-x-2 sm:space-x-4">
+          <div className="relative flex items-center">
+            <AnimatePresence initial={false}>
+              <motion.button
+                key="search-button"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => {
+                  router.push('/search')
+                }}
+                className="p-1.5 rounded-full hover:bg-primary-foreground/20 transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
+                aria-label="Search"
+              >
+                <Search className="h-4 w-4" />
+              </motion.button>
+            </AnimatePresence>
+          </div>
 
-          <UserSection>
-            <Link href="/search" passHref aria-label="Search page">
-                <SearchIconPlaceholder />
+          <button
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            className="p-1.5 rounded-full hover:bg-primary-foreground/20 transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
+            aria-label="Toggle theme"
+          >
+            {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </button>
+
+          {user ? (
+            <>
+              <NotificationBell user={user} />
+              <span className="text-sm font-medium hidden sm:inline">{user.username}</span>
+              <button
+                onClick={logout}
+                className="text-sm relative group focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded px-1 py-1.5"
+              >
+                logout
+                <span className="absolute -bottom-0.5 left-0 w-0 h-0.5 bg-primary-foreground/70 transition-all group-hover:w-full"></span>
+              </button>
+            </>
+          ) : (
+            <Link
+              href="/login"
+              className="text-sm relative group focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded px-1 py-1.5"
+            >
+              login
+              <span className="absolute -bottom-0.5 left-0 w-0 h-0.5 bg-primary-foreground/70 transition-all group-hover:w-full"></span>
             </Link>
+          )}
+        </div>
+      </div>
 
-            {user ? (
-              <>
-                <NotificationBell />
-                <UserText>{user.username}</UserText>
-                <LogoutButton onClick={logout}>logout</LogoutButton>
-              </>
-            ) : (
-              <>
-                <NavLink href="/login">login</NavLink>
-              </>
-            )}
-          </UserSection>
-        </HeaderContent>
-      </HeaderContainer>
-      <TabsBarContainer>
-        <HeaderContent>
-          <SortingTabs>
-            <SortTab
-              active={currentSort === "new"}
-              onClick={() => handleSortChange("new")}
+      {/* Tabs Bar - styled according to V0 example and existing logic */}
+      <div className="bg-background text-foreground border-b border-border">
+        <div className="container mx-auto px-4 max-w-5xl flex items-center space-x-2 sm:space-x-8 py-0 sm:py-2 overflow-y-hidden overflow-x-auto h-12">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => handleSortChange(tab.id)}
+              className={`relative px-1 py-2 text-sm font-medium transition-colors cursor-pointer group focus:outline-none focus-visible:ring-1 focus-visible:ring-ring roundedwhitespace-nowrap 
+                ${currentSort === tab.id ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
             >
-              New
-            </SortTab>
-            <SortTab
-              active={currentSort === "top"}
-              onClick={() => handleSortChange("top")}
-            >
-              Top
-            </SortTab>
-            <SortTab
-              active={currentSort === "best"}
-              onClick={() => handleSortChange("best")}
-            >
-              Best
-            </SortTab>
-          </SortingTabs>
-        </HeaderContent>
-      </TabsBarContainer>
-    </div>
-  );
-};
+              {tab.label}
+              {currentSort === tab.id ? (
+                <motion.div
+                  layoutId="activeTab"
+                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
+                  transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                />
+              ) : (
+                <span className="absolute -bottom-0 left-0 w-0 h-0.5 bg-muted-foreground/70 transition-all group-hover:w-full"></span>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+    </header>
+  )
+}
 
-export default function HeaderWrapper() {
+interface HeaderWrapperProps {
+  user: User | null;
+}
+
+export default function HeaderWrapper({ user }: HeaderWrapperProps) {
   return (
-    <Suspense>
-      <Header />
+    <Suspense fallback={<div className="h-[104px] bg-primary" />}>
+      <HeaderComponent user={user} />
     </Suspense>
-  );
+  )
 }
