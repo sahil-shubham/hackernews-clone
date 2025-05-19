@@ -1,24 +1,20 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { PageContainer } from '@/components/ui/layout'
 import { Heading, ErrorText } from '@/components/ui/typography'
 import { Input } from '@/components/ui/Input' // Assuming Input is a Tailwind component
 import { Button } from '@/components/ui/Button'
-import { User } from '@/lib/authUtils'
+import { createPost } from '@/app/actions/postActions' // Import the server action
 
-interface SubmitPageClientProps {
-  user: User;
-}
-
-export default function SubmitPageClient({ user }: SubmitPageClientProps) {
+export default function SubmitPageClient() {
   const router = useRouter()
   const [title, setTitle] = useState('')
   const [url, setUrl] = useState('')
   const [textContent, setTextContent] = useState('')
   const [type, setType] = useState<'LINK' | 'TEXT'>('LINK') // Default to LINK, or make it selectable
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
   // Removed useEffect for redirect, as that's handled by the Server Component wrapper
@@ -51,36 +47,20 @@ export default function SubmitPageClient({ user }: SubmitPageClientProps) {
       return
     }
 
-    setIsSubmitting(true)
-    try {
-      const response = await fetch('/api/posts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${user.token}`,
-        },
-        body: JSON.stringify({
-          title: title.trim(),
-          url: type === 'LINK' ? url.trim() : null,
-          textContent: type === 'TEXT' ? textContent.trim() : null,
-          type,
-        }),
+    startTransition(async () => {
+      const result = await createPost({
+        title: title.trim(),
+        url: type === 'LINK' ? url.trim() : null,
+        textContent: type === 'TEXT' ? textContent.trim() : null,
+        type,
       })
 
-      const responseData = await response.json()
-      if (!response.ok) {
-        throw new Error(responseData.error || 'Failed to create post')
-      }
-      router.push(`/post/${responseData.id}`)
-    } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message)
+      if (result.success && result.postId) {
+        router.push(`/post/${result.postId}`)
       } else {
-        setError('An error occurred while creating the post')
+        setError(result.message || 'An error occurred while creating the post')
       }
-    } finally {
-      setIsSubmitting(false)
-    }
+    })
   }
 
   return (
@@ -101,6 +81,7 @@ export default function SubmitPageClient({ user }: SubmitPageClientProps) {
           variant={type === 'LINK' ? 'default' : 'outline'} 
           onClick={() => setType('LINK')} 
           size="sm"
+          disabled={isPending}
         >
           Link Post
         </Button>
@@ -108,6 +89,7 @@ export default function SubmitPageClient({ user }: SubmitPageClientProps) {
           variant={type === 'TEXT' ? 'default' : 'outline'} 
           onClick={() => setType('TEXT')} 
           size="sm"
+          disabled={isPending}
         >
           Text Post
         </Button>
@@ -119,7 +101,7 @@ export default function SubmitPageClient({ user }: SubmitPageClientProps) {
             <label htmlFor="title" className="block text-sm font-medium text-foreground mb-1">
               Title <span className="text-destructive">*</span>
             </label>
-            <Input type="text" id="title" value={title} onChange={(e) => setTitle(e.target.value)} required />
+            <Input type="text" id="title" value={title} onChange={(e) => setTitle(e.target.value)} required disabled={isPending} />
           </div>
 
           {type === 'LINK' ? (
@@ -127,7 +109,7 @@ export default function SubmitPageClient({ user }: SubmitPageClientProps) {
               <label htmlFor="url" className="block text-sm font-medium text-foreground mb-1">
                 URL <span className="text-destructive">*</span>
               </label>
-              <Input type="url" id="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://example.com" required />
+              <Input type="url" id="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://example.com" required disabled={isPending} />
             </div>
           ) : (
             <div>
@@ -142,12 +124,13 @@ export default function SubmitPageClient({ user }: SubmitPageClientProps) {
                 required
                 className="w-full p-3 text-sm bg-background border border-input rounded-md shadow-sm focus:ring-2 focus:ring-ring focus:border-ring placeholder-muted-foreground"
                 placeholder="Share your thoughts..."
+                disabled={isPending}
               />
             </div>
           )}
 
-          <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
-            {isSubmitting ? 'Submitting...' : 'Submit Post'}
+          <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
+            {isPending ? 'Submitting...' : 'Submit Post'}
           </Button>
         </form>
       </div>
