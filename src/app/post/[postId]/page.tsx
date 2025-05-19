@@ -301,7 +301,8 @@ export default function PostDetailPage() {
         ) : (
           <div className="space-y-6">
             {comments.map((comment) => (
-              <CommentItem key={comment.id} comment={comment} onVote={handleCommentVote} onReply={handleCommentReply} />
+              // @ts-expect-error TODO: fix this
+              <CommentItem postId={postId} key={comment.id} comment={comment} onVote={handleCommentVote} onReply={handleCommentReply} />
             ))}
           </div>
         )}

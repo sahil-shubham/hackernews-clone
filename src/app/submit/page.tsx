@@ -1,13 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/hooks/useAuthStore'
-import * as Styled from '@/styles/components'
+import { PageContainer } from '@/components/ui/layout'
+import { Heading, ErrorText, Text } from '@/components/ui/typography'
+import { Input } from '@/components/ui/Input'
+import { Button } from '@/components/ui/Button'
 
 export default function SubmitPage() {
   const router = useRouter()
-  const  user = useAuthStore((state) => state.user)
+  const user = useAuthStore((state) => state.user)
 
   const [title, setTitle] = useState('')
   const [url, setUrl] = useState('')
@@ -16,120 +19,150 @@ export default function SubmitPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Redirect to login if not authenticated
-  if (!user && !isSubmitting) {
-    router.push('/login?next=/submit')
-    return null
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !user && !isSubmitting) {
+      router.push('/login?next=/submit')
+    }
+  }, [user, isSubmitting, router])
+
+  if (!user) {
+    return (
+      <PageContainer className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)]">
+        <Text>Redirecting to login...</Text>
+      </PageContainer>
+    )
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    setError(null)
 
-    if (!title) {
+    if (!title.trim()) {
       setError('Title is required')
       return
     }
 
-    if (type === 'LINK' && !url) {
+    if (type === 'LINK' && !url.trim()) {
       setError('URL is required for link posts')
       return
     }
+    if (type === 'LINK' && url.trim()) {
+      try {
+        new URL(url.trim())
+      } catch (_) {
+        setError('Invalid URL format')
+        return
+      }
+    }
 
-    if (type === 'TEXT' && !textContent) {
+    if (type === 'TEXT' && !textContent.trim()) {
       setError('Text content is required for text posts')
       return
     }
 
+    setIsSubmitting(true)
     try {
-      setIsSubmitting(true)
-      setError(null)
-
       const response = await fetch('/api/posts', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${user!.token}`
+          Authorization: `Bearer ${user!.token}`,
         },
         body: JSON.stringify({
-          title,
-          url: type === 'LINK' ? url : null,
-          textContent: type === 'TEXT' ? textContent : null,
-          type
-        })
+          title: title.trim(),
+          url: type === 'LINK' ? url.trim() : null,
+          textContent: type === 'TEXT' ? textContent.trim() : null,
+          type,
+        }),
       })
 
+      const responseData = await response.json()
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to create post')
+        throw new Error(responseData.error || 'Failed to create post')
       }
-
-      const data = await response.json()
-
-      // Redirect to the post or homepage
-      router.push(`/post/${data.id}`)
+      router.push(`/post/${responseData.id}`)
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message)
       } else {
         setError('An error occurred while creating the post')
       }
+    } finally {
       setIsSubmitting(false)
     }
   }
 
   return (
-    <Styled.PageContainer>
-      <Styled.Heading $level={1}>Submit</Styled.Heading>
+    <PageContainer className="max-w-2xl mx-auto py-8 sm:py-12">
+      <Heading as="h1" className="text-2xl sm:text-3xl font-bold text-center mb-8">
+        Create Post
+      </Heading>
 
-      {error && <Styled.ErrorAlert>{error}</Styled.ErrorAlert>}
+      {error && (
+        <div className="bg-destructive/10 border border-destructive/30 text-destructive p-3 rounded-md mb-6 text-sm">
+          <ErrorText>{error}</ErrorText>
+        </div>
+      )}
 
-      <Styled.TypeSelectorContainer>
-        <Styled.TypeSelectorGroup role="group">
-          <Styled.TypeButton type="button" active={type === 'LINK'} onClick={() => setType('LINK')}>
+      <div className="flex justify-center mb-8">
+        <div className="inline-flex rounded-md shadow-sm bg-card border border-border" role="group">
+          <Button
+            type="button"
+            variant={type === 'LINK' ? 'default' : 'ghost'}
+            onClick={() => setType('LINK')}
+            className={`px-4 py-2 text-sm font-medium rounded-l-md ${type === 'LINK' ? '' : 'hover:bg-muted'}`}
+          >
             Link
-          </Styled.TypeButton>
-          <Styled.TypeButton type="button" active={type === 'TEXT'} onClick={() => setType('TEXT')}>
+          </Button>
+          <Button
+            type="button"
+            variant={type === 'TEXT' ? 'default' : 'ghost'}
+            onClick={() => setType('TEXT')}
+            className={`px-4 py-2 text-sm font-medium rounded-r-md border-l border-border ${type === 'TEXT' ? '' : 'hover:bg-muted'}`}
+          >
             Text
-          </Styled.TypeButton>
-        </Styled.TypeSelectorGroup>
-      </Styled.TypeSelectorContainer>
+          </Button>
+        </div>
+      </div>
 
-      <Styled.Card>
-        <form onSubmit={handleSubmit}>
-          <Styled.FormGroup>
-            <Styled.Label htmlFor="title">
-              Title <Styled.RequiredMark>*</Styled.RequiredMark>
-            </Styled.Label>
-            <Styled.Input type="text" id="title" value={title} onChange={(e) => setTitle(e.target.value)} required />
-          </Styled.FormGroup>
+      <div className="bg-card p-6 sm:p-8 rounded-lg shadow-xl border border-border">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label htmlFor="title" className="block text-sm font-medium text-foreground mb-1">
+              Title <span className="text-destructive">*</span>
+            </label>
+            <Input type="text" id="title" value={title} onChange={(e) => setTitle(e.target.value)} required />
+          </div>
 
           {type === 'LINK' ? (
-            <Styled.FormGroup>
-              <Styled.Label htmlFor="url">
-                URL <Styled.RequiredMark>*</Styled.RequiredMark>
-              </Styled.Label>
-              <Styled.Input type="url" id="url" value={url} onChange={(e) => setUrl(e.target.value)} required />
-            </Styled.FormGroup>
+            <div>
+              <label htmlFor="url" className="block text-sm font-medium text-foreground mb-1">
+                URL <span className="text-destructive">*</span>
+              </label>
+              <Input type="url" id="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://example.com" required />
+            </div>
           ) : (
-            <Styled.FormGroup>
-              <Styled.Label htmlFor="textContent">
-                Text <Styled.RequiredMark>*</Styled.RequiredMark>
-              </Styled.Label>
-              <Styled.TextArea
+            <div>
+              <label htmlFor="textContent" className="block text-sm font-medium text-foreground mb-1">
+                Text <span className="text-destructive">*</span>
+              </label>
+              <textarea
                 id="textContent"
                 value={textContent}
                 onChange={(e) => setTextContent(e.target.value)}
-                rows={6}
+                rows={8}
                 required
+                className="w-full p-3 text-sm bg-background border border-input rounded-md shadow-sm focus:ring-2 focus:ring-ring focus:border-ring placeholder-muted-foreground"
+                placeholder="Share your thoughts... (optional for link posts, required for text posts)"
               />
-            </Styled.FormGroup>
+            </div>
           )}
 
-          <Styled.Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Submitting...' : 'Submit'}
-          </Styled.Button>
+          <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
+            {isSubmitting ? 'Submitting...' : 'Submit Post'}
+          </Button>
         </form>
-      </Styled.Card>
-    </Styled.PageContainer>
+      </div>
+    </PageContainer>
   )
 }

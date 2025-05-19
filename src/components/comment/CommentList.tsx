@@ -2,90 +2,25 @@
 
 import React from 'react';
 import CommentItem from './CommentItem';
-import type { Comment } from '@/types/comment';
-import styled from 'styled-components';
+import type { Comment as CommentType } from '@/types/comment';
+import { Heading as UiHeading } from '@/components/ui/typography';
+import { Text } from '@/components/ui/typography';
 
 interface CommentListProps {
-  comments: Comment[];
+  comments: CommentType[];
   postId: string;
   loading?: boolean;
   onVote?: (commentId: string, voteType: 'UPVOTE' | 'DOWNVOTE') => Promise<void>;
-  onReply?: (commentId: string, text: string) => Promise<void>;
+  onReply?: (parentId: string, text: string, postId: string) => Promise<void>;
 }
 
-// Styled Components
-const Container = styled.div`
-  padding: 1rem 0;
-`;
-
-const SectionHeading = styled.div`
-  margin-bottom: 1rem;
-`;
-
-const Heading = styled.h3`
-  font-size: 1.125rem;
-  font-weight: 500;
-`;
-
-const CommentsContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-`;
-
-const EmptyState = styled.div`
-  background-color: white;
-  border-radius: 0.375rem;
-  padding: 1.5rem;
-  text-align: center;
-  color: #6b7280;
-`;
-
-const LoadingPlaceholder = styled.div`
-  height: 1.25rem;
-  background-color: #e5e7eb;
-  border-radius: 0.25rem;
-  width: 25%;
-  margin-bottom: 1rem;
-`;
-
-const LoadingComment = styled.div`
-  background-color: white;
-  border-radius: 0.375rem;
-  padding: 0.75rem;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  margin-bottom: 0.75rem;
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-
-  @keyframes pulse {
-    0%, 100% {
-      opacity: 1;
-    }
-    50% {
-      opacity: 0.5;
-    }
-  }
-`;
-
-const LoadingHeader = styled.div`
-  height: 0.75rem;
-  background-color: #e5e7eb;
-  border-radius: 0.25rem;
-  width: 25%;
-  margin-bottom: 0.5rem;
-`;
-
-const LoadingBody = styled.div`
-  height: 1rem;
-  background-color: #f3f4f6;
-  border-radius: 0.25rem;
-  width: 75%;
-  margin-bottom: 0.5rem;
-`;
-
-const LoadingBodyShort = styled(LoadingBody)`
-  width: 50%;
-`;
+const LoadingCommentSkeleton = () => (
+  <div className="bg-card p-3 rounded-md shadow-sm animate-pulse mb-3">
+    <div className="h-3.5 bg-muted rounded w-1/4 mb-2"></div>
+    <div className="h-4 bg-muted rounded w-3/4 mb-3"></div>
+    <div className="h-4 bg-muted rounded w-1/2"></div>
+  </div>
+);
 
 export default function CommentList({ 
   comments, 
@@ -96,49 +31,43 @@ export default function CommentList({
 }: CommentListProps) {
   if (loading) {
     return (
-      <Container>
-        <SectionHeading>
-          <LoadingPlaceholder />
-        </SectionHeading>
-        {[...Array(3)].map((_, index) => (
-          <LoadingComment key={index}>
-            <LoadingHeader />
-            <LoadingBody />
-            <LoadingBodyShort />
-          </LoadingComment>
-        ))}
-      </Container>
-    );
-  }
-
-  if (comments.length === 0) {
-    return (
-      <Container>
-        <SectionHeading>
-          <Heading>Comments</Heading>
-        </SectionHeading>
-        <EmptyState>
-          No comments yet. Be the first to comment!
-        </EmptyState>
-      </Container>
+      <div className="py-4">
+        <div className="mb-4">
+          <div className="h-5 bg-muted rounded w-1/3 animate-pulse"></div>
+        </div>
+        <div>
+          {[...Array(3)].map((_, index) => (
+            <LoadingCommentSkeleton key={index} />
+          ))}
+        </div>
+      </div>
     );
   }
 
   return (
-    <Container>
-      <SectionHeading>
-        <Heading>Comments ({comments.length})</Heading>
-      </SectionHeading>
-      <CommentsContainer>
-        {comments.map((comment) => (
-          <CommentItem
-            key={comment.id}
-            comment={comment}
-            onVote={onVote}
-            onReply={onReply}
-          />
-        ))}
-      </CommentsContainer>
-    </Container>
+    <div className="py-4">
+      <div className="mb-6">
+        <UiHeading as="h3" className="text-xl font-semibold">
+          Comments {comments.length > 0 && `(${comments.length})`}
+        </UiHeading>
+      </div>
+      {comments.length === 0 ? (
+        <div className="bg-card border border-dashed border-border p-6 rounded-md text-center">
+          <Text emphasis="low">No comments yet. Be the first to comment!</Text>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {comments.map((comment) => (
+            <CommentItem
+              key={comment.id}
+              comment={comment}
+              postId={postId}
+              onVote={onVote}
+              onReply={onReply}
+            />
+          ))}
+        </div>
+      )}
+    </div>
   );
 } 

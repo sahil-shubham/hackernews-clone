@@ -141,7 +141,7 @@ export default function HomePageClient({
         </div>
       }
       
-      <PostList posts={posts} loading={false} onVote={handleVote} /> 
+      <PostList posts={posts} onVote={handleVote} /> 
       
       {!loading && pagination.totalPages > 1 && (
         <div className="flex justify-center py-lg">

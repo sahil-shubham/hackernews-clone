@@ -13,11 +13,10 @@ import {
 } from 'lucide-react'
 import { useAuthStore } from '@/hooks/useAuthStore'
 import type { Post as PostType } from '@/types/post' // Renamed to avoid conflict with component
-import { Button } from '@/components/ui/Button' // Our existing button
 
 interface PostItemProps {
   post: PostType
-  onVote: (postId: string, voteType: 'UPVOTE' | 'DOWNVOTE') => Promise<PostType | null> // Expects updated post or null
+  onVote: (postId: string, voteType: 'UPVOTE' | 'DOWNVOTE') => Promise<void> // Expects updated post or null
   index?: number
   isExpanded: boolean
   onToggleExpand: (postId: string) => void
@@ -60,17 +59,14 @@ const PostItem: React.FC<PostItemProps> = ({ post, onVote, index, isExpanded, on
     setDisplayPoints(newOptimisticPoints)
 
     try {
-      const updatedPostFromServer = await onVote(post.id, newVoteDirection)
-      if (updatedPostFromServer) {
-        // If server confirms, re-sync with server state if needed, though optimistic is usually fine
-        // setDisplayPoints(updatedPostFromServer.points);
-        // setCurrentVote(updatedPostFromServer.voteType || null);
-      } else {
+      await onVote(post.id, newVoteDirection)
+      // If server confirms, re-sync with server state if needed, though optimistic is usually fine
+      // setDisplayPoints(updatedPostFromServer.points);
+      // setCurrentVote(updatedPostFromServer.voteType || null);
         // Rollback optimistic update if server call fails or returns null
         setDisplayPoints(post.points)
         setCurrentVote(post.voteType || null)
         alert('Failed to register vote. Please try again.')
-      }
     } catch (error) {
       console.error('Failed to vote:', error)
       // Rollback optimistic update

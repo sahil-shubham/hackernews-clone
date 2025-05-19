@@ -12,7 +12,6 @@ import { useAuthStore } from '@/hooks/useAuthStore'
 // import NotificationBell from '@/components/notifications/NotificationBell'
 import { Suspense } from 'react'
 
-// Removed all styled-components definitions
 
 const HeaderComponent = () => {
   const router = useRouter()

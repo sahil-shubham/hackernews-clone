@@ -1,231 +1,173 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuthStore } from '@/hooks/useAuthStore';
-import styled from 'styled-components';
-import type { Comment } from '@/types/comment';
+import { ChevronUp, ChevronDown, MessageCircle } from 'lucide-react'; // For voting and reply icon
+import type { Comment as CommentType } from '@/types/comment'; // Renamed to avoid conflict
 import type { Vote } from '@/types/vote';
+import { Button } from '@/components/ui/Button';
+import { Text } from '@/components/ui/typography';
+import { FlexContainer } from '@/components/ui/layout';
+import CommentForm from './CommentForm'; // For inline replies
 
 interface CommentItemProps {
-  comment: Comment;
-  onVote?: (commentId: string, voteType: Vote['voteType']) => Promise<void>;
-  onReply?: (commentId: string, text: string) => Promise<void>;
+  comment: CommentType;
+  postId: string; // Added postId
+  // Expect onVote to handle API call and potentially return updated comment or just handle UI updates in parent
+  onVote?: (commentId: string, voteType: Vote['voteType']) => Promise<void>; 
+  onReply?: (parentId: string, text: string, postId: string) => Promise<void>; // Added postId to onReply
   depth?: number;
   maxDepth?: number;
 }
 
-// Styled Components
-const CommentContainer = styled.div<{ depth: number }>`
-  padding-top: 0.5rem;
-  ${props => props.depth > 0 && `
-    padding-left: 0.75rem;
-    border-left: 1px solid #e5e7eb;
-    
-    @media (min-width: 768px) {
-      padding-left: 1.25rem;
-    }
-  `}
-`;
-
-const CommentCard = styled.div`
-  background-color: white;
-  border-radius: 0.375rem;
-  padding: 0.75rem;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-`;
-
-const CommentHeader = styled.div`
-  display: flex;
-  align-items: center;
-  font-size: 0.75rem;
-  color: #6b7280;
-`;
-
-const AuthorName = styled.span`
-  font-weight: 500;
-  color: #374151;
-`;
-
-const Separator = styled.span`
-  margin: 0 0.25rem;
-`;
-
-const CommentContent = styled.div`
-  margin-top: 0.25rem;
-`;
-
-const CommentText = styled.p`
-  font-size: 0.875rem;
-`;
-
-const CommentActions = styled.div`
-  margin-top: 0.5rem;
-  display: flex;
-  align-items: center;
-  font-size: 0.75rem;
-  color: #6b7280;
-`;
-
-const VoteContainer = styled.div`
-  display: flex;
-  align-items: center;
-  margin-right: 0.75rem;
-`;
-
-const VoteButton = styled.button<{ active: boolean }>`
-  margin-right: 0.25rem;
-  color: ${props => props.active ? '#ea580c' : '#9ca3af'};
-  &:hover {
-    color: #f97316;
-  }
-`;
-
-const ActionButton = styled.button`
-  margin-right: 0.75rem;
-  &:hover {
-    color: #374151;
-  }
-`;
-
-const ReplyForm = styled.form`
-  margin-top: 0.75rem;
-`;
-
-const ReplyTextArea = styled.textarea`
-  width: 100%;
-  padding: 0.5rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.25rem;
-  font-size: 0.875rem;
-`;
-
-const ReplySubmitButton = styled.button<{ disabled: boolean }>`
-  margin-top: 0.5rem;
-  padding: 0.25rem 0.75rem;
-  background-color: ${props => props.disabled ? '#fdba74' : '#ea580c'};
-  color: white;
-  font-size: 0.75rem;
-  border-radius: 0.25rem;
-  &:hover {
-    background-color: ${props => props.disabled ? '#fdba74' : '#c2410c'};
-  }
-`;
-
-const NestedReplies = styled.div`
-  margin-top: 0.5rem;
-`;
-
-export default function CommentItem({ 
+const CommentItem: React.FC<CommentItemProps> = ({ 
   comment, 
+  postId, // Destructure postId
   onVote, 
   onReply,
   depth = 0,
-  maxDepth = 5
-}: CommentItemProps) {
+  maxDepth = 5 // Default max depth to prevent infinite recursion issues
+}) => {
   const user = useAuthStore((state) => state.user);
   const [isReplying, setIsReplying] = useState(false);
-  const [replyText, setReplyText] = useState('');
-  const [isSubmittingReply, setIsSubmittingReply] = useState(false);
   
+  // Optimistic state for voting (visual feedback only, parent responsible for actual data update)
+  const [currentVote, setCurrentVote] = useState(comment.voteType || null);
+  const [displayPoints, setDisplayPoints] = useState(comment.points);
+
+  useEffect(() => {
+    setCurrentVote(comment.voteType || null);
+    setDisplayPoints(comment.points);
+  }, [comment.voteType, comment.points]);
+
   const timeAgo = formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true });
   
-  const handleVote = async (voteType: Vote['voteType']) => {
+  const handleVoteOptimistic = async (voteDirection: 'UPVOTE' | 'DOWNVOTE') => {
     if (!user || !onVote) return;
-    await onVote(comment.id, voteType);
-  };
-  
-  const handleReply = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!user || !onReply || !replyText.trim()) return;
-    
+
+    const previousVote = currentVote;
+    const previousPoints = displayPoints;
+
+    let newVote = currentVote;
+    let newPoints = displayPoints;
+
+    if (currentVote === voteDirection) { // Undoing vote
+      newVote = null;
+      newPoints = previousPoints + (voteDirection === 'UPVOTE' ? -1 : 1);
+    } else { // New vote or switching vote
+      newVote = voteDirection;
+      if (previousVote) { // Switching vote
+        newPoints = previousPoints + (voteDirection === 'UPVOTE' ? 2 : -2);
+      } else { // New vote
+        newPoints = previousPoints + (voteDirection === 'UPVOTE' ? 1 : -1);
+      }
+    }
+    setCurrentVote(newVote);
+    setDisplayPoints(newPoints);
+
     try {
-      setIsSubmittingReply(true);
-      await onReply(comment.id, replyText);
-      setReplyText('');
-      setIsReplying(false);
-    } finally {
-      setIsSubmittingReply(false);
+      await onVote(comment.id, voteDirection);
+      // Parent should re-fetch/update and new props will flow down
+    } catch (error) {
+      // Revert optimistic update on error
+      setCurrentVote(previousVote);
+      setDisplayPoints(previousPoints);
+      alert('Vote failed. Please try again.');
     }
   };
   
+  const handleReplySubmit = async (text: string) => {
+    if (!user || !onReply || !text.trim()) return;
+    
+    try {
+      await onReply(comment.id, text, postId); // Pass postId to onReply
+      setIsReplying(false);
+    } catch (error) {
+      console.error("Failed to submit reply:", error);
+      alert("Failed to submit reply. Please try again.");
+      // Potentially keep reply form open with text
+    }
+  };
+  
+  const containerPaddingClass = depth > 0 ? (depth === 1 ? 'pl-4 md:pl-6' : 'pl-3 md:pl-4') : '';
+  const borderClass = depth > 0 ? 'border-l-2 border-border' : '';
+
   return (
-    <CommentContainer depth={depth}>
-      <CommentCard>
-        {/* Comment header */}
-        <CommentHeader>
-          <AuthorName>{comment.author.username}</AuthorName>
-          <Separator>•</Separator>
-          <span>{timeAgo}</span>
-        </CommentHeader>
+    <div className={`py-2 ${containerPaddingClass} ${borderClass}`}>
+      <div className="bg-card p-3 rounded-md shadow-sm">
+        <FlexContainer align="center" className="text-xs text-muted-foreground mb-1.5">
+          <Text size="sm" className="font-semibold text-foreground mr-1.5">{comment.author.username}</Text>
+          <span>•</span>
+          <Text size="sm" emphasis="low" className="ml-1.5 text-xs">{timeAgo}</Text>
+        </FlexContainer>
         
-        {/* Comment content */}
-        <CommentContent>
-          <CommentText>{comment.textContent}</CommentText>
-        </CommentContent>
+        <div className="text-sm text-foreground mb-2 whitespace-pre-wrap break-words">
+          {comment.textContent}
+        </div>
         
-        {/* Comment actions */}
-        <CommentActions>
-          <VoteContainer>
-            {user && (
-              <VoteButton 
-                onClick={() => handleVote('UPVOTE')}
-                active={comment.voteType === 'UPVOTE'}
-                aria-label="Upvote"
+        <FlexContainer align="center" className="text-xs text-muted-foreground">
+          {user && onVote && (
+            <FlexContainer align="center" className="mr-4">
+              <Button 
+                variant="ghost"
+                size="icon"
+                onClick={() => handleVoteOptimistic('UPVOTE')}
+                aria-label="Upvote comment"
+                className={`p-0.5 h-auto rounded ${currentVote === 'UPVOTE' ? 'text-primary' : 'hover:text-primary'}`}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
-                  <path d="M12 4l-8 8h5v8h6v-8h5l-8-8z" />
-                </svg>
-              </VoteButton>
-            )}
-            <span>{comment.points} point{comment.points !== 1 && 's'}</span>
-          </VoteContainer>
-          
-          {user && onReply && (
-            <ActionButton onClick={() => setIsReplying(!isReplying)}>
-              {isReplying ? 'Cancel' : 'Reply'}
-            </ActionButton>
+                <ChevronUp size={16} strokeWidth={currentVote === 'UPVOTE' ? 3 : 2} />
+              </Button>
+              <Text size="sm" className={`font-medium tabular-nums mx-1 text-xs ${currentVote ? 'text-foreground' : ''}`}>{displayPoints}</Text>
+              {/* No downvote for comments for now, to simplify. Can be added if needed. */}
+            </FlexContainer>
           )}
-        </CommentActions>
+          {!user && onVote && (
+            <Text size="sm" className="mr-4 tabular-nums text-xs">{displayPoints} {comment.points !== 1 ? 'points' : 'point'}</Text>
+          )}
+          
+          {user && onReply && depth < maxDepth && (
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => setIsReplying(!isReplying)}
+              className="p-1 h-auto text-xs flex items-center"
+            >
+              <MessageCircle size={14} className="mr-1" />
+              {isReplying ? 'Cancel' : 'Reply'}
+            </Button>
+          )}
+        </FlexContainer>
         
-        {/* Reply form */}
-        {isReplying && (
-          <ReplyForm onSubmit={handleReply}>
-            <ReplyTextArea
-              value={replyText}
-              onChange={(e) => setReplyText(e.target.value)}
-              rows={3}
-              placeholder="Write your reply..."
-              required
+        {isReplying && onReply && (
+          <div className="mt-3">
+            <CommentForm 
+              postId={postId}
+              onAddComment={handleReplySubmit} 
+              placeholder={`Replying to ${comment.author.username}...`}
+              parentId={comment.id}
             />
-            <div>
-              <ReplySubmitButton
-                type="submit"
-                disabled={isSubmittingReply || !replyText.trim()}
-              >
-                {isSubmittingReply ? 'Submitting...' : 'Submit'}
-              </ReplySubmitButton>
-            </div>
-          </ReplyForm>
+          </div>
         )}
-      </CommentCard>
+      </div>
       
-      {/* Nested replies */}
       {comment.replies && comment.replies.length > 0 && depth < maxDepth && (
-        <NestedReplies>
+        <div className="mt-2">
           {comment.replies.map((reply) => (
             <CommentItem
               key={reply.id}
               comment={reply}
+              postId={postId}
               onVote={onVote}
               onReply={onReply}
               depth={depth + 1}
               maxDepth={maxDepth}
             />
           ))}
-        </NestedReplies>
+        </div>
       )}
-    </CommentContainer>
+    </div>
   );
-} 
+}
+
+export default CommentItem; 

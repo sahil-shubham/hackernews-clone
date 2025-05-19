@@ -2,34 +2,27 @@
 
 import { Suspense, useState, useRef, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import * as Styled from "@/styles/components";
+import { Button } from "@/components/ui/Button";
+import { PageContainer } from "@/components/ui/layout";
+import { XIcon } from "lucide-react";
 
 const SearchResults = () => {
   const searchParams = useSearchParams();
   const query = searchParams.get("query") || "";
   const page = searchParams.get("page") || "1";
-  const sort = searchParams.get("sort") || "new"; // Or some default sort for search
-
-  // TODO: Fetch search results based on query, page, sort, etc.
-  // This will be similar to src/app/page.tsx's useEffect for fetching posts
+  const sort = searchParams.get("sort") || "new";
 
   if (!query) {
-    return <p>Enter a search term to begin.</p>;
+    return <p className="text-center text-muted-foreground py-8">Enter a search term to see results.</p>;
   }
 
   return (
-    <div>
-      <h2>Results for {query}</h2>
-      <p>Page: {page}, Sort by: {sort}</p>
-      {/* Placeholder for results list */}
-      <div>
-        {/* Map over search results and render them */}
-        <p>Search results will appear here...</p>
-        <p>Implement fetching and display of posts similar to PostList.</p>
-      </div>
-      {/* Placeholder for pagination */}
-      <div>
-        <p>Pagination will go here...</p>
+    <div className="mt-8">
+      <h2 className="text-xl font-semibold mb-4">Results for: <span className="text-primary">{query}</span></h2>
+      
+      <div className="border border-dashed border-border rounded-md p-8 text-center text-muted-foreground">
+        <p>Search results would appear here.</p>
+        <p className="text-xs mt-2">(Implement fetching and display using e.g. PostList)</p>
       </div>
     </div>
   );
@@ -38,97 +31,80 @@ const SearchResults = () => {
 const SearchPageClient = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
-
   const initialQuery = searchParams.get("query") || "";
   const [searchTerm, setSearchTerm] = useState(initialQuery);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Sync searchTerm state with URL's 'query' parameter
   useEffect(() => {
-    const queryFromUrl = searchParams.get("query") || "";
-    if (searchTerm !== queryFromUrl) {
-      setSearchTerm(queryFromUrl);
-    }
+    setSearchTerm(searchParams.get("query") || "");
   }, [searchParams]);
 
-  // Focus input on initial load if no query, or when query is cleared
   useEffect(() => {
     if (searchInputRef.current && !initialQuery) {
       searchInputRef.current.focus();
     }
   }, [initialQuery]);
 
-
-  const handleSearchSubmit = (e?: React.FormEvent) => {
+  const handleSearchSubmit = (e?: React.FormEvent<HTMLFormElement>) => {
     if (e) e.preventDefault();
     const trimmedSearchTerm = searchTerm.trim();
-    const currentParams = new URLSearchParams(searchParams.toString());
+    const currentParams = new URLSearchParams(Array.from(searchParams.entries()));
 
     if (trimmedSearchTerm) {
       currentParams.set("query", trimmedSearchTerm);
-      currentParams.set("page", "1"); // Reset to page 1 for new search
-      // We might want to preserve sort/filter options or reset them
-      // For now, only 'query' and 'page' are explicitly managed here
+      currentParams.set("page", "1");
     } else {
-      // If search term is cleared, remove 'query' param
       currentParams.delete("query");
-      // Optionally, you might want to clear other search-related params too
     }
     router.push(`/search?${currentParams.toString()}`);
   };
 
   const handleClearSearch = () => {
-    setSearchTerm(""); // Clear the input field
-    const currentParams = new URLSearchParams(searchParams.toString());
+    setSearchTerm("");
+    const currentParams = new URLSearchParams(Array.from(searchParams.entries()));
     currentParams.delete("query");
-    currentParams.set("page", "1"); // Reset to page 1
+    currentParams.set("page", "1"); 
     router.push(`/search?${currentParams.toString()}`);
-    if (searchInputRef.current) {
-      searchInputRef.current.focus(); // Focus after clearing
-    }
+    searchInputRef.current?.focus();
   };
 
-
   return (
-    <div>
-      <Styled.SearchInputContainer>
-        <form onSubmit={handleSearchSubmit}>
-          <Styled.StyledSearchInput
+    <PageContainer className="py-6 sm:py-8">
+      <form onSubmit={handleSearchSubmit} className="mb-8">
+        <div className="relative">
+          <input
             ref={searchInputRef}
             type="text"
-            placeholder="Search stories by title, url or author"
+            placeholder="Search stories by title, URL, or author..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
+            className="mt-1 block w-full px-3 py-2 bg-background border border-input rounded-md text-sm shadow-sm placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring text-base pr-10 sm:pr-12 h-12 sm:h-14 text-lg"
           />
           {searchTerm && (
-            <Styled.ClearSearchButton
+            <Button
               type="button"
+              variant="ghost"
+              size="icon"
               onClick={handleClearSearch}
               aria-label="Clear search"
+              className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 sm:h-10 sm:w-10"
             >
-              &times;
-            </Styled.ClearSearchButton>
+              <XIcon className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
+            </Button>
           )}
-          {/* We can add a submit button if desired, or rely on Enter key press */}
-          {/* <button type="submit">Search</button> */}
-        </form>
-      </Styled.SearchInputContainer>
-
-      {/* Tabs for "Stories", "Comments", etc. and filters for "by Popularity", "by Date" will go here */}
-      {/* Sorting options like "All time", "Last 24h" etc. will also go here */}
-      {/* For now, SearchResults component will read these from URL */}
+        </div>
+      </form>
       
-      <Suspense fallback={<div>Loading search results...</div>}>
+      <Suspense fallback={<div className="text-center py-10">Loading search results...</div>}>
         <SearchResults />
       </Suspense>
-    </div>
+    </PageContainer>
   );
 };
 
 export default function SearchPage() {
   return (
-    // Wrap SearchPageClient with Suspense because it uses useSearchParams
-    <Suspense fallback={<div>Loading page...</div>}>
+    <Suspense fallback={<div className="text-center py-10">Loading page...</div>}>
       <SearchPageClient />
     </Suspense>
   );
