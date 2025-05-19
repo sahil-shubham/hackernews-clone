@@ -79,7 +79,7 @@ export default function SubmitPage() {
 
   return (
     <Styled.PageContainer>
-      <Styled.Heading level={1}>Submit</Styled.Heading>
+      <Styled.Heading $level={1}>Submit</Styled.Heading>
 
       {error && <Styled.ErrorAlert>{error}</Styled.ErrorAlert>}
 

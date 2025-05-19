@@ -3,76 +3,13 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
-import styled from 'styled-components';
+import * as Styled from '@/styles/components'
 
 interface CommentFormProps {
   postId: string;
   onAddComment: (text: string) => Promise<void>;
   placeholder?: string;
 }
-
-// Styled Components
-const FormContainer = styled.div`
-  background-color: white;
-  border-radius: 0.375rem;
-  padding: 1rem;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  margin-bottom: 1.5rem;
-`;
-
-const TextArea = styled.textarea`
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.25rem;
-`;
-
-const FormGroup = styled.div`
-  margin-bottom: 0.75rem;
-`;
-
-const ErrorMessage = styled.p`
-  color: #ef4444;
-  font-size: 0.875rem;
-  margin-top: 0.25rem;
-`;
-
-const ButtonContainer = styled.div`
-  display: flex;
-  justify-content: flex-end;
-`;
-
-const SubmitButton = styled.button<{ disabled: boolean }>`
-  padding: 0.5rem 1rem;
-  background-color: ${props => props.disabled ? '#fdba74' : '#ea580c'};
-  color: white;
-  border-radius: 0.25rem;
-  font-weight: 500;
-  &:hover {
-    background-color: ${props => props.disabled ? '#fdba74' : '#c2410c'};
-  }
-`;
-
-const LoginMessage = styled.div`
-  text-align: center;
-  padding: 1rem 0;
-`;
-
-const LoginText = styled.p`
-  color: #4b5563;
-  margin-bottom: 0.5rem;
-`;
-
-const LoginButton = styled.button`
-  padding: 0.5rem 1rem;
-  background-color: #ea580c;
-  color: white;
-  border-radius: 0.25rem;
-  font-weight: 500;
-  &:hover {
-    background-color: #c2410c;
-  }
-`;
 
 export default function CommentForm({ 
   postId, 
@@ -117,38 +54,36 @@ export default function CommentForm({
   };
   
   return (
-    <FormContainer>
+    <Styled.CommentsFormContainer>
       {user ? (
         <form onSubmit={handleSubmit}>
-          <FormGroup>
-            <TextArea
+          <Styled.CommentsFormGroup>
+            <Styled.TextArea
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               rows={4}
               placeholder={placeholder}
               required
             />
-            {error && <ErrorMessage>{error}</ErrorMessage>}
-          </FormGroup>
-          <ButtonContainer>
-            <SubmitButton
-              type="submit"
-              disabled={isSubmitting || !comment.trim()}
-            >
-              {isSubmitting ? 'Posting...' : 'Post Comment'}
-            </SubmitButton>
-          </ButtonContainer>
+            {error && <Styled.ErrorText>{error}</Styled.ErrorText>}
+          </Styled.CommentsFormGroup>
+          <Styled.Button
+            type="submit"
+            disabled={isSubmitting || !comment.trim()}
+          >
+            {isSubmitting ? 'Posting...' : 'Post Comment'}
+          </Styled.Button>
         </form>
       ) : (
-        <LoginMessage>
-          <LoginText>You need to be logged in to comment</LoginText>
-          <LoginButton
+        <Styled.FlexContainer>
+          <Styled.Text>You need to be logged in to comment</Styled.Text>
+          <Styled.Button
             onClick={() => router.push(`/login?next=/post/${postId}`)}
           >
             Login to Comment
-          </LoginButton>
-        </LoginMessage>
+          </Styled.Button>
+        </Styled.FlexContainer>
       )}
-    </FormContainer>
+    </Styled.CommentsFormContainer>
   );
 } 

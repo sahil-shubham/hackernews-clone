@@ -26,3 +26,15 @@ export const NoCommentsMessage = styled.div`
   text-align: center;
   color: ${props => props.theme.colors.secondary};
 `;
+
+export const CommentsFormContainer = styled.div`
+  background-color: white;
+  border-radius: 0.375rem;
+  padding: 1rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  margin-bottom: 1.5rem;
+`;
+
+export const CommentsFormGroup = styled.div`
+  margin-bottom: 0.75rem;
+`;

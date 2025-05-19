@@ -2,10 +2,10 @@ import styled from "styled-components";
 
 // Button components
 export const Button = styled.button<{
-  variant?: 'primary' | 'secondary' | 'outline' | 'text';
-  size?: 'sm' | 'md' | 'lg';
-  fullWidth?: boolean;
-  disabled?: boolean;
+  $variant?: 'primary' | 'secondary' | 'outline' | 'text';
+  $size?: 'sm' | 'md' | 'lg';
+  $fullWidth?: boolean;
+  $disabled?: boolean;
 }>`
   display: inline-flex;
   align-items: center;
@@ -14,11 +14,11 @@ export const Button = styled.button<{
   border-radius: ${props => props.theme.radii.md};
   cursor: ${props => (props.disabled ? 'not-allowed' : 'pointer')};
   transition: background-color 0.2s, border-color 0.2s, color 0.2s;
-  width: ${props => (props.fullWidth ? '100%' : 'auto')};
+  width: ${props => (props.$fullWidth ? '100%' : 'auto')};
   
   /* Size variations */
   padding: ${props => {
-    switch (props.size) {
+    switch (props.$size) {
       case 'sm': return `${props.theme.space.xs} ${props.theme.space.md}`;
       case 'lg': return `${props.theme.space.md} ${props.theme.space.xl}`;
       default: return `${props.theme.space.sm} ${props.theme.space.lg}`;
@@ -26,7 +26,7 @@ export const Button = styled.button<{
   }};
   
   font-size: ${props => {
-    switch (props.size) {
+    switch (props.$size) {
       case 'sm': return props.theme.fontSizes.xs;
       case 'lg': return props.theme.fontSizes.lg;
       default: return props.theme.fontSizes.md;
@@ -35,7 +35,7 @@ export const Button = styled.button<{
   
   /* Variant styles */
   ${props => {
-    switch (props.variant) {
+    switch (props.$variant) {
       case 'secondary':
         return `
           background-color: ${props.theme.colors.secondary};

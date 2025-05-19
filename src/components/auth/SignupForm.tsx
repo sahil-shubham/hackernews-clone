@@ -55,7 +55,7 @@ const SignupForm: React.FC = () => {
 
   return (
     <Styled.FormCard>
-      <Styled.Heading level={2}>Sign Up</Styled.Heading>
+      <Styled.Heading $level={2}>Sign Up</Styled.Heading>
       <form onSubmit={handleSubmit}>
         <Styled.FormGroup>
           <Styled.Label htmlFor="email">
@@ -112,7 +112,7 @@ const SignupForm: React.FC = () => {
         <Styled.Button 
           type="submit" 
           disabled={isSubmitting}
-          fullWidth
+          $fullWidth
         >
           {isSubmitting ? 'Signing up...' : 'Sign Up'}
         </Styled.Button>
