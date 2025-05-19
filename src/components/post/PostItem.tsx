@@ -7,29 +7,40 @@ import {
   ChevronUp,
   ChevronDown,
   MessageSquare,
-  ExternalLink
+  ExternalLink,
+  Share2 as CopyLink
 } from 'lucide-react'
 import { User } from '@/lib/authUtils'
 import type { Post as PostType } from '@/types/post'
 import { voteOnPost } from '@/app/actions/voteActions'
 import { useTransition } from 'react'
+import BookmarkButton from './BookmarkButton'
+import { toast } from 'sonner'
 
 interface PostItemProps {
   post: PostType
   index?: number
   user: User | null
+  isBookmarked?: boolean
+  onBookmarkChange?: (postId: string, isBookmarked: boolean) => void
 }
 
-const PostItem: React.FC<PostItemProps> = ({ post, user }) => {
+const PostItem: React.FC<PostItemProps> = ({ post, user, isBookmarked = false, onBookmarkChange }) => {
   const [currentVote, setCurrentVote] = useState<'UPVOTE' | 'DOWNVOTE' | null>(null)
   const [displayPoints, setDisplayPoints] = useState(post.points)
   const [isPending, startTransition] = useTransition()
+  const [baseUrl, setBaseUrl] = useState<string>('')
 
   // Effect to sync with prop changes (e.g., after parent re-fetches or on initial load post-revalidation)
   useEffect(() => {
     setDisplayPoints(post.points)
     setCurrentVote(post.voteType || null)
   }, [post.points, post.voteType])
+
+  // Set base URL on client side only
+  useEffect(() => {
+    setBaseUrl(window.location.origin)
+  }, [])
 
   const handleVote = async (newVoteDirection: 'UPVOTE' | 'DOWNVOTE') => {
     if (!user) {
@@ -80,6 +91,24 @@ const PostItem: React.FC<PostItemProps> = ({ post, user }) => {
         console.error('Exception during post vote transition:', error)
       }
     })
+  }
+
+  const handleShare = async () => {
+    const contentToCopy = post.type === 'LINK' && post.url 
+      ? post.url 
+      : `${baseUrl}/post/${post.id}`
+    
+    try {
+      await navigator.clipboard.writeText(contentToCopy)
+      toast.success(
+        post.type === 'LINK' ? 'Link copied to clipboard' : 'Post link copied to clipboard',
+        {
+          duration: 2000,
+        }
+      )
+    } catch (err) {
+      toast.error('Failed to copy to clipboard')
+    }
   }
 
   const domain = post.url ? new URL(post.url).hostname.replace(/^www\./, '') : null
@@ -171,6 +200,22 @@ const PostItem: React.FC<PostItemProps> = ({ post, user }) => {
               <MessageSquare className="h-4 w-4" />
               {post.commentCount} {post.commentCount === 1 ? 'comment' : 'comments'}
             </Link>
+            <button
+              onClick={handleShare}
+              className={`flex items-center gap-1 hover:text-foreground transition-colors ${focusRingClass} px-0.5`}
+              aria-label="Share post"
+            >
+              <CopyLink className="h-4 w-4" />
+              copy link
+            </button>
+            {user && (
+              <BookmarkButton
+                postId={post.id}
+                isBookmarked={isBookmarked}
+                user={user}
+                onBookmarkChange={(isBookmarked) => onBookmarkChange?.(post.id, isBookmarked)}
+              />
+            )}
           </div>
         </div>
       </div>

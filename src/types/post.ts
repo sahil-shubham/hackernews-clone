@@ -23,4 +23,5 @@ export type Post = {
     type: "LINK" | "TEXT";
     voteType?: (("UPVOTE" | "DOWNVOTE") | undefined) | null;
     hasVoted?: boolean | undefined;
+    isBookmarked?: boolean | undefined;
 };

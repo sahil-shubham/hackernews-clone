@@ -48,6 +48,7 @@ async function fetchPostsData(
       author: { select: { id: true, username: true } },
       votes: { select: { userId: true, voteType: true } },
       _count: { select: { comments: true } },
+      bookmarks: currentUserId ? { where: { userId: currentUserId }, select: { id: true } } : false,
     },
     orderBy: sort === 'top' ? { createdAt: 'desc' } : orderBy, // For 'top', fetch recent ones then sort by points
     skip: offset,
@@ -83,6 +84,7 @@ async function fetchPostsData(
       type: post.type as PrismaPostType as "LINK" | "TEXT", // Ensure correct type assertion
       voteType: currentUserVote,
       hasVoted: !!currentUserVote,
+      isBookmarked: currentUserId ? (post.bookmarks && post.bookmarks.length > 0) : false,
     };
   });
 

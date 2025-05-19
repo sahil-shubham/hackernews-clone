@@ -4,15 +4,15 @@ import type React from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Check, Sun, Moon } from 'lucide-react'
+import { Search, Check, Sun, Moon, Bookmark } from 'lucide-react'
 import { useTheme } from 'next-themes'
-import { User } from '@/lib/authUtils';
+import { User } from '@/lib/authUtils'
 import { useAuthAPI } from '@/hooks/useAuthAPI'
 import NotificationBell from '@/components/notifications/NotificationBell'
 import { Suspense, useEffect, useState } from 'react'
 
 interface HeaderComponentProps {
-  user: User | null;
+  user: User | null
 }
 
 const HeaderComponent: React.FC<HeaderComponentProps> = ({ user }) => {
@@ -50,6 +50,9 @@ const HeaderComponent: React.FC<HeaderComponentProps> = ({ user }) => {
     { id: 'top', label: 'Top' },
     { id: 'best', label: 'Best' }
   ]
+
+  // Determine if we are on the bookmarks page
+  const isBookmarksPage = typeof window !== 'undefined' ? window.location.pathname === '/bookmarks' : false
 
   return (
     <header className="bg-primary text-primary-foreground">
@@ -89,6 +92,14 @@ const HeaderComponent: React.FC<HeaderComponentProps> = ({ user }) => {
           </div>
 
           <button
+            onClick={() => router.push('/bookmarks')}
+            className="p-1.5 rounded-full hover:bg-primary-foreground/20 transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
+            aria-label="Bookmarks"
+          >
+            <Bookmark className="h-4 w-4" />
+          </button>
+
+          <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             className="p-1.5 rounded-full hover:bg-primary-foreground/20 transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
             aria-label="Toggle theme"
@@ -120,7 +131,6 @@ const HeaderComponent: React.FC<HeaderComponentProps> = ({ user }) => {
         </div>
       </div>
 
-      {/* Tabs Bar - styled according to V0 example and existing logic */}
       <div className="bg-background text-foreground border-b border-border">
         <div className="container mx-auto px-4 max-w-5xl flex items-center space-x-2 sm:space-x-8 py-0 sm:py-2 overflow-y-hidden overflow-x-auto h-12">
           {tabs.map((tab) => (
@@ -128,7 +138,7 @@ const HeaderComponent: React.FC<HeaderComponentProps> = ({ user }) => {
               key={tab.id}
               onClick={() => handleSortChange(tab.id)}
               className={`relative px-1 py-2 text-sm font-medium transition-colors cursor-pointer group focus:outline-none focus-visible:ring-1 focus-visible:ring-ring roundedwhitespace-nowrap 
-                ${currentSort === tab.id ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                  ${currentSort === tab.id ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
             >
               {tab.label}
               {currentSort === tab.id ? (
@@ -149,7 +159,7 @@ const HeaderComponent: React.FC<HeaderComponentProps> = ({ user }) => {
 }
 
 interface HeaderWrapperProps {
-  user: User | null;
+  user: User | null
 }
 
 export default function HeaderWrapper({ user }: HeaderWrapperProps) {
