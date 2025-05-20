@@ -4,6 +4,7 @@ import type { Post } from '@/types/post';
 import { getServerSideUser } from '@/lib/authUtils';
 import { prisma } from '@/lib/prisma'; // Import Prisma client
 import type { VoteType as PrismaVoteType, PostType as PrismaPostType } from '@prisma/client'; // Import Prisma types
+import { calculateScore } from './utils/ranking'; // Corrected import path
 
 export const revalidate = 60; // Revalidate this page at most every 60 seconds
 
@@ -34,13 +35,14 @@ async function fetchPostsData(
   // or use a simpler multi-field sort for 'best'.
 
   if (sort === 'best') {
-    // Simple 'best': more points -> more comments -> newer
-    orderBy = [{ votes: { _count: 'desc' } }, { comments: { _count: 'desc' } }, { createdAt: 'desc' }];
     // This orderBy on related counts might not be directly supported or performant in all Prisma versions/
     // If issues arise, we would fetch posts and sort them in the application layer after calculating scores.
     // For true 'best' like Hacker News, a more complex scoring algorithm considering time decay is needed.
+    orderBy = [{ votes: { _count: 'desc' } }, { comments: { _count: 'desc' } }, { createdAt: 'desc' }];
   }
-  // 'top' sort will be handled after fetching posts, as we need to calculate points first.
+  // For 'top', we fetch recent posts and then sort by calculated score in application code.
+  // So, we can keep the default createdAt: 'desc' or remove specific orderBy for 'top' at Prisma level if fetching a wider pool.
+  // Let's fetch by createdAt: 'desc' to get a relevant pool for 'top' before applying score.
 
   const postsData = await prisma.post.findMany({
     where: whereClause,
@@ -50,14 +52,14 @@ async function fetchPostsData(
       _count: { select: { comments: true } },
       bookmarks: currentUserId ? { where: { userId: currentUserId }, select: { id: true } } : false,
     },
-    orderBy: sort === 'top' ? { createdAt: 'desc' } : orderBy, // For 'top', fetch recent ones then sort by points
+    orderBy: orderBy, // Keep existing orderBy for 'new' and 'best' (initial pool for 'best')
     skip: offset,
-    take: limit,
+    take: limit, // For 'top', consider fetching more if performance allows, then slicing after scoring
   });
 
   const totalPosts = await prisma.post.count({ where: whereClause });
 
-  const processedPosts = postsData.map((post) => {
+  const scoredPosts = postsData.map((post) => {
     const points = post.votes.reduce((acc, vote) => {
       if (vote.voteType === 'UPVOTE') return acc + 1;
       if (vote.voteType === 'DOWNVOTE') return acc - 1;
@@ -79,23 +81,25 @@ async function fetchPostsData(
       textContent: post.textContent,
       points: points,
       author: post.author,
-      createdAt: post.createdAt.toISOString(),
+      createdAt: post.createdAt.toISOString(), // Keep as ISO string for calculateScore
       commentCount: post._count.comments,
-      type: post.type as PrismaPostType as "LINK" | "TEXT", // Ensure correct type assertion
+      type: post.type as PrismaPostType as "LINK" | "TEXT",
       voteType: currentUserVote,
       hasVoted: !!currentUserVote,
       isBookmarked: currentUserId ? (post.bookmarks && post.bookmarks.length > 0) : false,
+      // Add score field, calculated only if needed for 'top'
+      score: sort === 'top' ? calculateScore({ points, createdAt: post.createdAt }) : 0,
     };
   });
 
   if (sort === 'top') {
-    processedPosts.sort((a, b) => b.points - a.points); // Sort by points descending for 'top'
+    scoredPosts.sort((a, b) => b.score - a.score); // Sort by score descending for 'top'
   }
   // For 'best', if the Prisma orderBy on counts isn't sufficient/performant, 
   // implement a custom scoring and sorting logic here.
   // Example simplified scoring for 'best' if Prisma orderBy on counts is problematic:
   // if (sort === 'best') {
-  //   processedPosts.sort((a, b) => {
+  //   scoredPosts.sort((a, b) => {
   //     const scoreA = a.points * 2 + a.commentCount; // Arbitrary weights
   //     const scoreB = b.points * 2 + b.commentCount;
   //     if (scoreB !== scoreA) return scoreB - scoreA;
@@ -104,7 +108,7 @@ async function fetchPostsData(
   // }
 
   return {
-    posts: processedPosts,
+    posts: scoredPosts, // Return the (potentially re-sorted) scoredPosts
     page,
     totalPages: Math.ceil(totalPosts / limit),
     totalPosts,

@@ -4,7 +4,7 @@ import type React from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Check, Sun, Moon, Bookmark } from 'lucide-react'
+import { Search, Check, Sun, Moon, Bookmark, Sparkles, TrendingUp } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { User } from '@/lib/authUtils'
 import { useAuthAPI } from '@/hooks/useAuthAPI'
@@ -46,9 +46,8 @@ const HeaderComponent: React.FC<HeaderComponentProps> = ({ user }) => {
   }
 
   const tabs = [
-    { id: 'new', label: 'New' },
-    { id: 'top', label: 'Top' },
-    { id: 'best', label: 'Best' }
+    { id: 'new', label: 'New', icon: Sparkles },
+    { id: 'top', label: 'Top', icon: TrendingUp },
   ]
 
   // Determine if we are on the bookmarks page
@@ -137,10 +136,11 @@ const HeaderComponent: React.FC<HeaderComponentProps> = ({ user }) => {
             <button
               key={tab.id}
               onClick={() => handleSortChange(tab.id)}
-              className={`relative px-1 py-2 text-sm font-medium transition-colors cursor-pointer group focus:outline-none focus-visible:ring-1 focus-visible:ring-ring roundedwhitespace-nowrap 
+              className={`relative flex items-center space-x-1.5 px-1 py-2 text-sm font-medium transition-colors cursor-pointer group focus:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded whitespace-nowrap 
                   ${currentSort === tab.id ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
             >
-              {tab.label}
+              <tab.icon className="h-4 w-4" />
+              <span>{tab.label}</span>
               {currentSort === tab.id ? (
                 <motion.div
                   layoutId="activeTab"
