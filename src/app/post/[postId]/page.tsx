@@ -107,8 +107,24 @@ async function fetchPostComments(postId: string, currentUserId: string | null): 
         orderBy: { createdAt: 'asc' },
       },
     },
-    orderBy: { createdAt: 'desc' },
+    // orderBy: { createdAt: 'asc' }, // Removed for manual sorting
   })
+
+  console.log("Original commentsData (JSON):", JSON.stringify(commentsData.map(c => ({ id: c.id, createdAt: c.createdAt })), null, 2));
+  console.log("Number of top-level comments:", commentsData.length);
+
+  // Create a sorted copy of top-level comments
+  const sortedComments = [...commentsData].sort((a, b) => {
+    const dateA = new Date(a.createdAt);
+    const dateB = new Date(b.createdAt);
+    const timeA = dateA.getTime();
+    const timeB = dateB.getTime();
+    const comparisonResult = timeB - timeA;
+    console.log(`Comparing: B.id=${b.id}, B.createdAt=${b.createdAt} (time: ${timeB}) | A.id=${a.id}, A.createdAt=${a.createdAt} (time: ${timeA}) | Result: ${comparisonResult}`);
+    return comparisonResult;
+  });
+
+  console.log("Sorted commentsData (JSON) - now sortedComments:", JSON.stringify(sortedComments.map(c => ({ id: c.id, createdAt: c.createdAt })), null, 2));
 
   const transformComments = (prismaComments: any[]): CommentType[] => {
     return prismaComments.map((comment) => {
@@ -138,7 +154,8 @@ async function fetchPostComments(postId: string, currentUserId: string | null): 
       }
     })
   }
-  return transformComments(commentsData)
+
+  return transformComments(sortedComments); // Use the sorted copy
 }
 
 interface PostDetailPageProps {

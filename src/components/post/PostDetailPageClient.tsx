@@ -28,6 +28,8 @@ export default function PostDetailPageClient({
 }: PostDetailPageClientProps) {
   const effectiveUser = currentUser
 
+  console.log('[Client] Received initialComments prop:', JSON.stringify(initialComments.map(c => ({id: c.id, createdAt: c.createdAt})), null, 2));
+
   const [post, setPost] = useState<PostType | null>(initialPost)
   const [comments, setComments] = useState<CommentType[]>(initialComments)
   const [commentsLoading, setCommentsLoading] = useState(false)
@@ -40,6 +42,7 @@ export default function PostDetailPageClient({
 
   useEffect(() => {
     setComments(initialComments)
+    console.log('[Client] comments state updated from initialComments useEffect:', JSON.stringify(initialComments.map(c => ({id: c.id, createdAt: c.createdAt})), null, 2));
   }, [initialComments])
 
   const updateCommentVoteState = (
@@ -71,9 +74,12 @@ export default function PostDetailPageClient({
     try {
       const result = await submitComment(null, text, postId)
 
-      if (!result.success) {
-        throw new Error(result.message)
+      if (!result.success || !result.newComment) {
+        throw new Error(result.message || 'Failed to submit comment or new comment data missing.')
       }
+
+      // Optimistically update the comments state
+      setComments((prevComments) => [result.newComment!, ...prevComments]);
 
       // Update post's comment count
       if (post) {
@@ -107,6 +113,8 @@ export default function PostDetailPageClient({
       return comment
     })
   }
+
+  console.log('[Client] Rendering with comments state:', JSON.stringify(comments.map(c => ({id: c.id, createdAt: c.createdAt})), null, 2));
 
   if (!post) {
     // This case should ideally be handled by the server component sending an error or notFound()

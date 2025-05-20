@@ -87,6 +87,20 @@ const generateCommentText = (postTitle?: string): string => {
   return commentStyles[Math.floor(Math.random() * commentStyles.length)]();
 };
 
+// Generate realistic post text content
+const generatePostTextContent = (): string => {
+  const contentStyles = [
+    () => fakerEN.lorem.paragraphs(1), // A short paragraph
+    () => fakerEN.lorem.sentences(fakerEN.number.int({ min: 2, max: 4 })), // 2 to 4 sentences
+    () => `${fakerEN.hacker.phrase()} ${fakerEN.lorem.sentence()} This often leads to new discoveries in the field of ${fakerEN.commerce.department()}.`,
+    () => `I've been working on a project involving ${fakerEN.company.buzzPhrase()} and wanted to share some initial thoughts. ${fakerEN.lorem.sentences(2)} It's still early days, but the potential is ${fakerEN.word.adjective()}.`,
+    () => `The core idea is to leverage ${fakerEN.hacker.noun()} to improve ${fakerEN.hacker.ingverb()}. We've seen some promising results, for example: ${fakerEN.lorem.sentence()} More details to follow soon.`,
+    () => `Let's discuss the implications of ${fakerEN.commerce.productName()} on the current market. ${fakerEN.lorem.sentence()} Some argue it's a game-changer, while others remain skeptical. What are your thoughts?`,
+    () => `A quick update on my previous post about ${fakerEN.hacker.noun()}: ${fakerEN.lorem.sentences(2)} The feedback was incredibly helpful!`
+  ];
+  return contentStyles[Math.floor(Math.random() * contentStyles.length)]();
+};
+
 async function main() {
   console.log(`Starting seed in ${SEED_MODE} mode...`);
   console.log(`Using BATCH_SIZE: ${BATCH_SIZE}`);
@@ -222,7 +236,7 @@ async function main() {
         title: generatePostTitle(),
         type: isLinkPost ? 'LINK' : 'TEXT',
         url: isLinkPost ? sanitizeUrl(fakerEN.internet.url()) : null,
-        textContent: isLinkPost ? null : fakerEN.lorem.paragraphs(2),
+        textContent: isLinkPost ? null : generatePostTextContent(), // Use new generator for text posts
         authorId: user.id,
         createdAt: createdAt,
       });
