@@ -47,7 +47,7 @@ export async function middleware(request: NextRequest) {
       }
     } catch (error) {
       // Token invalid or expired, proceed without user_id
-      // console.warn('Middleware: Invalid token, proceeding without user_id', path, error);
+      console.warn('Middleware: Invalid token, proceeding without user_id', path, error);
     }
   }
 
