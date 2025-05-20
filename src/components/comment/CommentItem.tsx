@@ -5,7 +5,7 @@ import { formatDistanceToNow } from 'date-fns'
 import type { Comment as CommentType } from '@/types/comment'
 import { User } from '@/lib/authUtils'
 import { voteOnComment } from '@/app/actions/voteActions'
-import { submitReply } from '@/app/actions/commentActions'
+import { submitComment } from '@/app/actions/commentActions'
 import { useTransition } from 'react'
 import { ChevronUp, MessageCircle } from 'lucide-react'
 import { Button } from '../ui/Button'
@@ -106,7 +106,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
 
     startReplyTransition(async () => {
       try {
-        const result = await submitReply(comment.id, text, postId)
+        const result = await submitComment(comment.id, text, postId)
         if (result.success) {
           setIsReplying(false)
         } else {

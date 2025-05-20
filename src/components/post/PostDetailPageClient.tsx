@@ -11,6 +11,7 @@ import { Text, ErrorText } from '@/components/ui/typography'
 import type { Vote } from '@/types/vote'
 import type { Comment as CommentType } from '@/types/comment'
 import type { Post as PostType } from '@/types/post'
+import { submitComment } from '@/app/actions/commentActions'
 
 interface PostDetailPageClientProps {
   initialPost: PostType | null;
@@ -58,36 +59,30 @@ export default function PostDetailPageClient({
     })
   }
 
-  // Placeholder for handleAddComment - to be reimplemented
   const handleAddComment = async (text: string) => {
-    if (!effectiveUser?.id || !effectiveUser?.username || !effectiveUser?.token) {
+    if (!effectiveUser) {
       setActionError('You must be logged in to comment.')
       return
     }
+
     setIsSubmittingComment(true)
     setActionError(null)
+
     try {
-      const response = await fetch(`/api/posts/${postId}/comments`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${effectiveUser.token}`
-        },
-        body: JSON.stringify({ textContent: text })
-      })
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Failed to post comment' }))
-        throw new Error(errorData.message)
+      const result = await submitComment(null, text, postId)
+
+      if (!result.success) {
+        throw new Error(result.message)
       }
-      const newCommentData = await response.json()
-      // Add comment to local state (optimistic update or based on response)
-      setComments((prevComments) => [...prevComments, newCommentData.comment]) // Assuming API returns { comment: ... }
-      // Update post's comment count if available and relevant
-      if (post && newCommentData.commentCount !== undefined) {
-        setPost((prevPost) => (prevPost ? { ...prevPost, commentCount: newCommentData.commentCount } : null))
-      } else if (post) {
-        setPost((prevPost) => (prevPost ? { ...prevPost, commentCount: (prevPost.commentCount || 0) + 1 } : null))
+
+      // Update post's comment count
+      if (post) {
+        setPost((prevPost) => (prevPost ? { 
+          ...prevPost, 
+          commentCount: (prevPost.commentCount || 0) + 1 
+        } : null))
       }
+
     } catch (err: any) {
       setActionError(err.message || 'Failed to post comment.')
       console.error('Error adding comment:', err)

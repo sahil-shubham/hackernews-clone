@@ -11,7 +11,7 @@ interface ReplyActionResult {
   newReply?: Partial<Comment>;
 }
 
-export async function submitReply(
+export async function submitComment(
   parentId: string | null,
   text: string,
   postId: string
